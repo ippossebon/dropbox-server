@@ -7,10 +7,6 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-/* Temos que conferir se não precisamos definir a porta de maneira mais dinâmica */
-#define PORT 4000
-
-
 /* Conecta o cliente com o servidor.
 host – endereço do servidor
 port – porta aguardando conexão */
@@ -23,19 +19,23 @@ int connect_server(char *host, int port){
     server = gethostbyname(host);
     if (server == NULL) {
         printf("Erro. Endereço informado inválido.\n");
-        exit(0);
+        return ERRO;
     }
 
-    if ((socket_id = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+    if ((socket_id = socket(AF_INET, SOCK_STREAM, 0)) == -1){
         printf("Erro ao iniciar o socket.\n");
+        return ERRO;
+    }
 
 	server_address.sin_family = AF_INET;
-	server_address.sin_port = htons(PORT);
+	server_address.sin_port = htons(port);
 	server_address.sin_addr = *((struct in_addr *)server->h_addr);
 	bzero(&(server_address.sin_zero), 8);
 
-	if (connect(socket_id,(struct sockaddr *) &server_address, sizeof(server_address)) < 0)
+	if (connect(socket_id,(struct sockaddr *) &server_address, sizeof(server_address)) < 0){
         printf("Erro ao conectar.\n");
+        return ERRO;
+    }
 
     return socket_id;
 }

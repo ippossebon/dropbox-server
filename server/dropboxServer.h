@@ -3,7 +3,7 @@
 
 #define MAXNAME 32
 #define MAXFILES 256
-
+#define ERRO -1
 
 struct file_info {
 	char name[MAXNAME]; // name[MAXNAME] refere-se ao nome do arquivo

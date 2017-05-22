@@ -3,6 +3,7 @@
 
 #define MAXNAME 32
 #define MAXFILES 256
+#define ERRO -1
 
 
 int connect_server(char *host, int port);

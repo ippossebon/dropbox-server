@@ -8,6 +8,7 @@
 
 #include "./dropboxServer.h"
 
+/* Temos que conferir se não precisamos definir a porta de maneira mais dinâmica */
 #define PORT 4000
 
 /* Sincroniza o servidor com o diretório “sync_dir_<nomeusuário>”
