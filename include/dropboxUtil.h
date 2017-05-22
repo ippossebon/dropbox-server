@@ -5,4 +5,7 @@
 #define MAXFILES 256
 #define ERRO -1
 
+
+int writeFileToBuffer(char* filename, char* buffer);
+
 #endif
