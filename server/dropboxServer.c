@@ -6,7 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#include "./dropboxServer.h"
+#include "../include/dropboxServer.h"
 
 #define PORT 4000
 

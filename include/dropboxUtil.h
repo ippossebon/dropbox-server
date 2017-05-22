@@ -2,5 +2,6 @@
 #define	__DROPBOXUTIL__
 
 
+int writeFileToBuffer(char* filename, char* buffer);
 
 #endif
