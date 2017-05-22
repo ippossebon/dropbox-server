@@ -7,7 +7,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-
+/* Temos que conferir se não precisamos definir a porta de maneira mais dinâmica */
 #define PORT 4000
 
 
@@ -15,7 +15,29 @@
 host – endereço do servidor
 port – porta aguardando conexão */
 int connect_server(char *host, int port){
-    return 0;
+    int socket_id;
+    struct sockaddr_in server_address;
+    struct hostent *server;
+
+    /* Verifica se o servidor informado é válido */
+    server = gethostbyname(host);
+    if (server == NULL) {
+        printf("Erro. Endereço informado inválido.\n");
+        exit(0);
+    }
+
+    if ((socket_id = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+        printf("Erro ao iniciar o socket.\n");
+
+	server_address.sin_family = AF_INET;
+	server_address.sin_port = htons(PORT);
+	server_address.sin_addr = *((struct in_addr *)server->h_addr);
+	bzero(&(server_address.sin_zero), 8);
+
+	if (connect(socket_id,(struct sockaddr *) &server_address, sizeof(server_address)) < 0)
+        printf("Erro ao conectar.\n");
+
+    return socket_id;
 }
 
 /* Sincroniza o diretório “sync_dir_<nomeusuário>” com
@@ -49,30 +71,26 @@ int main(int argc, char *argv[]){
     int socket_id, n;
     struct sockaddr_in server_address;
     struct hostent *server;
-
     char buffer[256];
-    if (argc < 2) {
-		fprintf(stderr,"usage %s hostname\n", argv[0]);
+
+    char userid[MAXNAME];
+
+    /* Teste se todos os argumentos foram informados ao executar o cliente */
+    if (argc < 4) {
+        printf("Erro. Informe o id do cliente e endereço e porta do servidor.\n");
 		exit(0);
     }
 
-	server = gethostbyname(argv[1]);
-	if (server == NULL) {
-        fprintf(stderr,"ERROR, no such host\n");
-        exit(0);
+    /* Conecta ao servidor com o endereço e porta informados, retornando o socket_id */
+    socket_id = connect_server(argv[2], atoi(argv[3]));
+    if(socket_id < 0){
+        printf("Erro. Não foi possível conectar ao servidor.\n");
+		exit(0);
     }
 
-    if ((socket_id = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-        printf("ERROR opening socket\n");
-
-	server_address.sin_family = AF_INET;
-	server_address.sin_port = htons(PORT);
-	server_address.sin_addr = *((struct in_addr *)server->h_addr);
-	bzero(&(server_address.sin_zero), 8);
-
-
-	if (connect(socket_id,(struct sockaddr *) &server_address, sizeof(server_address)) < 0)
-        printf("ERROR connecting\n");
+    /* Userid informado pelo usuário */
+    strcpy (userid, argv[1]);
+    printf("Userid informado: %s\n", userid);
 
     printf("Enter the message: ");
     bzero(buffer, 256);

@@ -1,7 +1,7 @@
 #ifndef __DROPBOXSERVER__
 #define	__DROPBOXSERVER__
 
-#define MAXNAME 64
+#define MAXNAME 32
 #define MAXFILES 256
 
 
