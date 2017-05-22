@@ -10,10 +10,10 @@ utilities: dropboxUtil.o
 	$(CC) dropboxUtil.c -c $(FLAGS)
 
 client: $(CLIENT_DIR)dropboxClient.o utilities
-	$(CC) -o dropboxClient $(CLIENT_DIR)dropboxClient.c dropboxUtil.o
+	$(CC) -o dropboxClient $(CLIENT_DIR)dropboxClient.c dropboxUtil.o $(FLAGS)
 
-server: $(SERVER_DIR)dropboxServer.c utilities
-	$(CC) -I$(INC_DIR) -o dropboxServer $(SERVER_DIR)dropboxServer.c $(FLAGS)
+server: $(SERVER_DIR)dropboxServer.o utilities
+	$(CC) -o dropboxServer $(SERVER_DIR)dropboxServer.c dropboxUtil.o $(FLAGS)
 
 clean:
 	rm -rf $(LIB_DIR)/*.a *.o $(SRC_DIR)/*~ $(INC_DIR)/*~ *~
