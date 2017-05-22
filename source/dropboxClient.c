@@ -111,7 +111,7 @@ int main(int argc, char *argv[]){
     bzero(buffer, 256);
     fgets(buffer, 256, stdin);
 */
-    send_file("../client/teste.txt", socket_id);
+    send_file("./teste.txt", socket_id);
 
 
 	/* write in the socket */
