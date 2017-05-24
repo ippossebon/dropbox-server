@@ -49,34 +49,20 @@ void sync_client(){
 
 /* Envia um arquivo file para o servidor. Deverá ser
 executada quando for realizar upload de um arquivo.
-file – path/filename.ext do arquivo a ser enviado */
+file – path/filename.ext do arquivo a ser enviado
+UPLOAD */
 void send_file(char *file, int socket){
-
-    char buffer[256];
-    int aux;
-
-    aux = writeFileToBuffer(file, buffer);
-    if (aux != 0){
-        printf("Erro ao abrir arquivo.\n");
-    }
-    printf("Buffer: %s\n", buffer);
-
-    /* Envia conteúdo do buffer pelo socket */
-    int r;
-	r = write(socket, buffer, strlen(buffer));
-    if (r < 0)
-		printf("ERROR writing to socket\n");
-
-    bzero(buffer,256);
+    sendFileThroughSocket(file, socket);
 }
 
 
 /* Obtém um arquivo file do servidor.
 Deverá ser executada quando for realizar download
 de um arquivo.
-file –filename.ext */
-void get_file(char *file){
-
+file –filename.ext
+DOWNLOAD */
+void get_file(char *file, int socket){
+    receiveFileThroughSocket(file, socket);
 }
 
 /* Fecha a conexão com o servidor */
@@ -92,7 +78,7 @@ int main(int argc, char *argv[]){
 
     /* Teste se todos os argumentos foram informados ao executar o cliente */
     if (argc < 4) {
-        printf("Erro. Informe o id do cliente e endereço e porta do servidor.\n");
+        printf("Usage: client_id host port.\n");
 		exit(0);
     }
 

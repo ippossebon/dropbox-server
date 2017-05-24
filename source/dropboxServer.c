@@ -2,11 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
 #include "../include/dropboxServer.h"
+#include "../include/dropboxUtil.h"
 
 /* Temos que conferir se não precisamos definir a porta de maneira mais dinâmica */
 #define PORT 4000
@@ -15,25 +17,39 @@
 com o cliente. */
 void sync_server(){
 
+
+}
+
+void sync_dir(char* client_id){
+
+	if(existsClientFolder(client_id)){
+		/* Realiza a sincronização*/
+		printf("[sync_dir] O cliente possui uma pasta no servidor.\n");
+	}
+	else{
+		printf("[sync_dir] O cliente não possui uma pasta no servidor. Criando...\n");
+		char* path = getClientFolderName(client_id);
+		mkdir(path, 0700); /* 0700 corresponde ao modo administrador */
+	}
 }
 
 /* Recebe um arquivo file do cliente.
 Deverá ser executada quando for realizar upload de um arquivo.
 file – path/filename.ext do arquivo a ser recebido */
-void receive_file(char *file){
-
+void receive_file(char *file, int socket){
+	receiveFileThroughSocket(file, socket);
 }
 
 /* Envia o arquivo file para o usuário.
 Deverá ser executada quando for realizar download de um arquivo.
 file – filename.ext */
-void send_file(char *file){
-
+void send_file(char *file, int socket){
+	sendFileThroughSocket(file, socket);
 }
 
 int main(int argc, char *argv[])
 {
-	int server_socket_id, new_socket_id;
+	int server_socket_id, new_socket_id, aux;
     struct sockaddr_in server_address, client_address;
 	socklen_t client_len;
 	char buffer[256];
@@ -62,12 +78,9 @@ int main(int argc, char *argv[])
     /* "Limpa" os valores da memória */
 	bzero(buffer, 256);
 
-	/* Lê buffer do socket */
-    int aux;
-	aux = read(new_socket_id, buffer, 256);
-	if (aux < 0)
-		printf("ERROR reading from socket");
-	printf("Here is the message: %s\n", buffer);
+	//sync_dir("cliente1");
+
+	//receive_file("teste.txt", new_socket_id);
 
 	/* write in the socket */
 	aux = write(new_socket_id,"I got your message", 18);
