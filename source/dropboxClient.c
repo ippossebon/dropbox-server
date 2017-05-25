@@ -116,6 +116,7 @@ int main(int argc, char *argv[]){
 		printf("ERROR reading from socket\n");
 
     printf("%s\n", buffer);
+    printf("eu sei comitar \n");
 
 	close(socket_id);
 
