@@ -15,7 +15,7 @@ struct stat st = {0};
 int writeFileToBuffer(char* filename, char* buffer){
     FILE *file;
     file = fopen(filename, "r");
-    int i = 0;
+    int i = strlen(buffer);
 
     if (file == NULL){
         printf("[writeFileToBuffer] Erro ao escrever arquivo no buffer.\n");
@@ -67,8 +67,10 @@ int existsClientFolder(char* client_id){
     }
 }
 
-void sendFileThroughSocket(char *file, int socket){
+void sendFileThroughSocket(char *file, char* tag, int socket){
     char buffer[256];
+
+    strcat(buffer, tag); //Adiciona no buffer a tag: op#file#cliente#
     int aux;
 
     aux = writeFileToBuffer(file, buffer);
