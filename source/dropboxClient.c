@@ -96,13 +96,12 @@ int main(int argc, char *argv[]){
     char line[110];
     char command[10];
     char fileName[100];
-    char tag[111];
     while(1){
         bzero(line, 110);
         bzero(command, 10);
         bzero(fileName,100);
         bzero(tag, 111);
-        printf("\nDigite seu comando no formato: \nupload <filename.ext> \ndownload <filename.ext> \nlist \nget_sync_dir \nexit\n ");
+        printf("Digite seu comando no formato: \nupload <filename.ext> \ndownload <filename.ext> \nlist \nget_sync_dir \nexit\n ");
         //fgets(line, 110, stdin);
         scanf ("%[^\n]%*c", line);
 
@@ -122,25 +121,17 @@ int main(int argc, char *argv[]){
             }
         }
 
-        //printf("Comando: %s  filename: %s\n\n", fileName, fileName);
-
-        //Enviar comunicação p servidor no formato: operação#file#cliente#
         // upload = 1, download = 2, list = 3, get_sync_dir = 4, exit = 5 (nem precisa)
         if( strcmp("upload", command) == 0){
-            strcat(tag, "1#"); strcat(tag, fileName); strcat(tag, "#"), strcat(tag, userid), strcat(tag, "#");
-           //printf("tag: %s\n", tag);
-            send_file(fileName, tag, socket_id);
+            //send_file(char *fileName, char* tag, int socket);
 
         }else if( strcmp("download", command) == 0){
-            strcat(tag, "2#"); strcat(tag, fileName); strcat(tag, "#"), strcat(tag, userid), strcat(tag, "#");
             //get_file(char *file, int socket){
 
         }else if( strcmp("list", command) == 0){
-            strcat(tag, "3#"); strcat(tag, fileName); strcat(tag, "#"), strcat(tag, userid), strcat(tag, "#");
             //falta uma função para a list
 
         }else if( strcmp("get_sync_dir", command) == 0){
-            strcat(tag, "4#"); strcat(tag, fileName); strcat(tag, "#"), strcat(tag, userid), strcat(tag, "#");
             //sync_client(){
 
         }else if( strcmp("exit", command) == 0){

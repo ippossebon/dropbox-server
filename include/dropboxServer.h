@@ -24,6 +24,6 @@ struct client {
 void sync_server();
 void receive_file(char *file, int socket);
 void sync_dir(char* client_id);
-void send_file(char *file, char * tag, int socket);
+void send_file(char *file, int socket);
 
 #endif

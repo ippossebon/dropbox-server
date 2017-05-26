@@ -43,8 +43,8 @@ void receive_file(char *file, int socket){
 /* Envia o arquivo file para o usuário.
 Deverá ser executada quando for realizar download de um arquivo.
 file – filename.ext */
-void send_file(char *file, char* tag, int socket){
-	sendFileThroughSocket(file, tag, socket);
+void send_file(char *file, int socket){
+	sendFileThroughSocket(file, socket);
 }
 
 int main(int argc, char *argv[])
