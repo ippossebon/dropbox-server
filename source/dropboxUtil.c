@@ -11,7 +11,9 @@
 
 struct stat st = {0};
 
-/* Lê um arquivo local e escreve no buffer. */
+/* Lê um arquivo local e escreve no buffer.
+Considerar caso em que file é maior que buffer -> Adaptar para tamanhos
+variáveis. */
 int writeFileToBuffer(char* filename, char* buffer){
     FILE *file;
     file = fopen(filename, "r");
@@ -29,7 +31,6 @@ int writeFileToBuffer(char* filename, char* buffer){
         }
     fclose(file);
     }
-
     return 0;
 }
 
@@ -81,12 +82,6 @@ void sendFileThroughSocket(char *file, int socket){
     int buffer_size = strlen(buffer);
 	num_bytes_sent = write(socket, buffer, buffer_size);
 
-    /* Rever sincronização entre leitura do server e envio do client. */
-    /*while (num_bytes_sent < buffer_size){
-        int index = (int)buffer_size - 1 - num_bytes_sent;
-        num_bytes_sent += write(socket, buffer, buffer_size - num_bytes_sent);
-    }
-*/
     if (num_bytes_sent < 0){
         printf("ERROR writing to socket\n");
     }
