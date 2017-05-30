@@ -58,16 +58,43 @@ void user_verification(int socket){
     }
 
     //faz verificações, se estiver ok, mandar mensagem ********
+	bzero(buffer, 256);
     num_bytes_sent = write(socket, "OK", 3);
-    printf("Server: realizei verificações e está ok com o usuário. \n");
-    if (num_bytes_read < 0){
-        printf("ERROR writing from socket");
-    }
+    //printf("Server: realizei verificações e está ok com o usuário. \n");
 
 }
 
-int main(int argc, char *argv[])
-{
+void receive_command_client(int socket){
+
+    char buffer[256];
+    int num_bytes_read;
+    num_bytes_read = read(socket, buffer, 256); //Lê o comando: upload, download, list ou get_sync
+    if (num_bytes_read < 0){
+        printf("ERROR reading from socket");
+    }
+
+    printf("comando: %s\n", buffer);
+    if( strcmp("upload", buffer) == 0){
+	    bzero(buffer, 256);
+        num_bytes_read = read(socket, buffer, 256); //Le o nome do arquivo
+        printf("file: %s\n", buffer);
+        receive_file(buffer, socket);
+
+    }else if( strcmp("download", buffer) == 0){
+	    bzero(buffer, 256);
+        num_bytes_read = read(socket, buffer, 256); //Le o nome do arquivo
+        printf("file: %s\n", buffer);
+        send_file(buffer, socket);
+
+    }else if( strcmp("list", buffer) == 0){
+        //função para a list
+
+    }else if( strcmp("get_sync_dir", buffer) == 0){
+        //sync_client(){
+    }  
+}
+
+int main(int argc, char *argv[]){
 	int server_socket_id, new_socket_id;
     struct sockaddr_in server_address, client_address;
 	socklen_t client_len;
@@ -96,16 +123,14 @@ int main(int argc, char *argv[])
 
     /* "Limpa" os valores da memória */
 	bzero(buffer, 256);
+
+    /* Faz verificação de usuário. TODO: verificar se existe, se ja está logado, etc */
     user_verification(new_socket_id);
 
-	//sync_dir("cliente1");
+    /* Recebe o comando e redireciona para a função objetivo */
+    receive_command_client(new_socket_id);
 
-	//receive_file("teste.txt", new_socket_id);
-
-	/* write in the socket */
-	/*aux = write(new_socket_id,"I got your message", 18);
-	if (aux < 0)
-		printf("ERROR writing to socket");*/
+	
 
 	close(new_socket_id);
 	close(server_socket_id);

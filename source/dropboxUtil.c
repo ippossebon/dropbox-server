@@ -27,9 +27,8 @@ int writeFileToBuffer(char* filename, char* buffer){
             buffer[i] = c;
             i++;
         }
-    fclose(file);
     }
-
+    fclose(file);
     return 0;
 }
 
@@ -38,11 +37,12 @@ int writeBufferToFile(char* filename, char* buffer){
     file = fopen(filename, "w");
     int buffer_size = strlen(buffer);
 
-    if (fwrite(buffer, 1, buffer_size, file) != buffer_size){
+    if (fwrite(buffer, sizeof(buffer), buffer_size, file) != buffer_size){
         printf("[writeBufferToFile] Erro ao escrever buffer em arquivo.\n");
         return ERRO;
     }
 
+    fclose(file);
     return 0;
 }
 
@@ -81,12 +81,6 @@ void sendFileThroughSocket(char *file, int socket){
     int buffer_size = strlen(buffer);
 	num_bytes_sent = write(socket, buffer, buffer_size);
 
-    /* Rever sincronização entre leitura do server e envio do client. */
-    /*while (num_bytes_sent < buffer_size){
-        int index = (int)buffer_size - 1 - num_bytes_sent;
-        num_bytes_sent += write(socket, buffer, buffer_size - num_bytes_sent);
-    }
-*/
     if (num_bytes_sent < 0){
         printf("ERROR writing to socket\n");
     }
@@ -97,6 +91,7 @@ void sendFileThroughSocket(char *file, int socket){
 void receiveFileThroughSocket(char* file, int socket){
     char buffer[256];
     int num_bytes_read;
+	bzero(buffer, 256);
     num_bytes_read = read(socket, buffer, 256);
 
     if (num_bytes_read < 0){
