@@ -52,8 +52,8 @@ executada quando for realizar upload de um arquivo.
 file – path/filename.ext do arquivo a ser enviado
 tag - numero da operação#file#cliente#
 UPLOAD */
-void send_file(char *file, char *tag, int socket){
-    sendFileThroughSocket(file, tag, socket);
+void send_file(char *file, int socket){
+    sendFileThroughSocket(file, socket);
 }
 
 
@@ -69,6 +69,26 @@ void get_file(char *file, int socket){
 /* Fecha a conexão com o servidor */
 void close_connection(){
 
+}
+
+int user_verification(int socket, char* userid){
+
+    printf("Realizando verificação de usuário... \n\n");
+
+    int num_bytes_sent, num_bytes_read;
+    int buffer_size = strlen(userid);
+	num_bytes_sent = write(socket, userid, buffer_size);
+
+    char buffer[256];
+    num_bytes_read = read(socket, buffer, 256);
+
+    if(strcmp (buffer, "OK") == 0){
+        printf("Client: Tudo certo com o usuário.\n");
+        return 0;
+    }else{
+        printf("Client: deu merda com o usuário. \n");
+        return 1;
+    }
 }
 
 int main(int argc, char *argv[]){
@@ -92,6 +112,10 @@ int main(int argc, char *argv[]){
 
     /* Userid informado pelo usuário */
     strcpy (userid, argv[1]);
+    if(user_verification(socket_id, userid) == 0){ // fazer verificações e se for ok, entao segue
+        printf("Usuário verificado, pode prosseguir.\n\n");
+    }
+   
 
     char line[110];
     char command[10];
@@ -100,9 +124,7 @@ int main(int argc, char *argv[]){
         bzero(line, 110);
         bzero(command, 10);
         bzero(fileName,100);
-        bzero(tag, 111);
         printf("Digite seu comando no formato: \nupload <filename.ext> \ndownload <filename.ext> \nlist \nget_sync_dir \nexit\n ");
-        //fgets(line, 110, stdin);
         scanf ("%[^\n]%*c", line);
 
         int i, flag = 0, count=0;

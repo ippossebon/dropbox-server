@@ -47,9 +47,28 @@ void send_file(char *file, int socket){
 	sendFileThroughSocket(file, socket);
 }
 
+void user_verification(int socket){
+
+    char buffer[256];
+    int num_bytes_read, num_bytes_sent;
+
+    num_bytes_read = read(socket, buffer, 256);
+    if (num_bytes_read < 0){
+        printf("ERROR reading from socket");
+    }
+
+    //faz verificações, se estiver ok, mandar mensagem ********
+    num_bytes_sent = write(socket, "OK", 3);
+    printf("Server: realizei verificações e está ok com o usuário. \n");
+    if (num_bytes_read < 0){
+        printf("ERROR writing from socket");
+    }
+
+}
+
 int main(int argc, char *argv[])
 {
-	int server_socket_id, new_socket_id, aux;
+	int server_socket_id, new_socket_id;
     struct sockaddr_in server_address, client_address;
 	socklen_t client_len;
 	char buffer[256];
@@ -77,15 +96,16 @@ int main(int argc, char *argv[])
 
     /* "Limpa" os valores da memória */
 	bzero(buffer, 256);
+    user_verification(new_socket_id);
 
 	//sync_dir("cliente1");
 
 	//receive_file("teste.txt", new_socket_id);
 
 	/* write in the socket */
-	aux = write(new_socket_id,"I got your message", 18);
+	/*aux = write(new_socket_id,"I got your message", 18);
 	if (aux < 0)
-		printf("ERROR writing to socket");
+		printf("ERROR writing to socket");*/
 
 	close(new_socket_id);
 	close(server_socket_id);
