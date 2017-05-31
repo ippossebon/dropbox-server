@@ -53,8 +53,26 @@ file – path/filename.ext do arquivo a ser enviado
 tag - numero da operação#file#cliente#
 UPLOAD */
 void send_file(char *file, char* buffer, int socket){
+
+    int aux;
+
+    aux = writeFileToBuffer(file, buffer);
+    if (aux != 0){
+        printf("Erro ao abrir arquivo.\n");
+    }
+
+    printf("[sendFileThroughSocket] buffer para enviar: %s\n", buffer);
+    /* Envia conteúdo do buffer pelo socket */
+    int num_bytes_sent;
+    int buffer_size = strlen(buffer);
+	num_bytes_sent = write(socket, buffer, buffer_size);
+
+    if (num_bytes_sent < 0){
+        printf("ERROR writing to socket\n");
+    }
+
     //printf("[send_file] file: %s - buffer: %s\n", file, buffer );
-    sendFileThroughSocket(file, buffer, socket);
+    //sendFileThroughSocket(file, buffer, socket);
 }
 
 
@@ -63,8 +81,23 @@ Deverá ser executada quando for realizar download
 de um arquivo.
 file –filename.ext
 DOWNLOAD */
-void get_file(char *file, char* buffer, int socket){
-    receiveFileThroughSocket(file, buffer, socket);
+void get_file(char *file, char* line, int socket){
+    int num_bytes_read, num_bytes_sent;
+    char buffer[256];
+	bzero(buffer, 256);
+ 
+    num_bytes_sent = write(socket, line, strlen(line));
+    if (num_bytes_sent < 0){
+        printf("ERROR writing from socket");
+    }
+
+    num_bytes_read = read(socket, buffer, 256);
+
+    if (num_bytes_read < 0){
+        printf("ERROR reading from socket");
+    }
+
+    writeBufferToFile(file, buffer);
 }
 
 /* Fecha a conexão com o servidor */
@@ -160,14 +193,7 @@ int main(int argc, char *argv[]){
             }
             else if( strcmp("download", command) == 0){
               /*TODO: fazer funcionar*/
-                int n;
-                char file_data[256];
-                n = read(socket_id, file_data, 256);
-
-                if (n < 0){
-                  printf("Erro ao ler do socket\n");
-                }
-                writeBufferToFile(fileName, file_data);
+              get_file(fileName, buffer, socket_id);
             }
             else if( strcmp("list", command) == 0){
                 //falta uma função para a list
@@ -185,7 +211,6 @@ int main(int argc, char *argv[]){
             }
             else{
                 printf("Comando inválido.\n");
-                break;
             }
         }
     }
