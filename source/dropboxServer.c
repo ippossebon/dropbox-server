@@ -13,6 +13,9 @@
 /* Temos que conferir se não precisamos definir a porta de maneira mais dinâmica */
 #define PORT 4000
 
+
+char username[MAXNAME];
+
 /* Sincroniza o servidor com o diretório “sync_dir_<nomeusuário>”
 com o cliente. */
 void sync_server(){
@@ -101,8 +104,10 @@ void receive_command_client(int socket){
     if( strcmp("upload", command) == 0){
 			/* file_data contém o conteúdo do arquivo a ser enviado para o servidor, e
 			filename é o nome do arquivo que está sendo enviado. */
-			// TODO: criar arquivo dentro do diretório do user
-				writeBufferToFile(file_name, file_data);
+			char *full_path = getClientFolderName(username);
+			strcat(full_path, file_name);
+
+			writeBufferToFile(full_path, file_data);
 
     }else if( strcmp("download", command) == 0){
 				bzero(buffer, 256);

@@ -53,6 +53,7 @@ char* getClientFolderName(char* client_id){
 
     strcat(full_path, path);
     strcat(full_path, client_id);
+    strcat(full_path, "/");
 
     return full_path;
 }
