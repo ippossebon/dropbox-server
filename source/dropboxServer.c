@@ -58,17 +58,19 @@ void user_verification(int socket){
     }
 
     //faz verificações, se estiver ok, mandar mensagem ********
-	bzero(buffer, 256);
+		bzero(buffer, 256);
     num_bytes_sent = write(socket, "OK", 3);
     //printf("Server: realizei verificações e está ok com o usuário. \n");
-
+		if (num_bytes_sent < 0){
+			printf("ERROR writing on socket\n");
+		}
 }
 
 void receive_command_client(int socket){
 
     char buffer[256];
     char command[10];
-    char* fileName;
+    char* fileName = malloc(sizeof(char) * 32);
     int num_bytes_read = read(socket, buffer, 256); //recebe comando#filename#arquivo (se existirem)
     if (num_bytes_read < 0){
         printf("ERROR reading from socket");

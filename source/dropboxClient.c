@@ -78,11 +78,20 @@ int user_verification(int socket, char* userid){
 
     int num_bytes_sent, num_bytes_read;
     int buffer_size = strlen(userid);
-	num_bytes_sent = write(socket, userid, buffer_size);
+
+    num_bytes_sent = write(socket, userid, buffer_size);
+
+    if (num_bytes_sent < 0){
+      printf("ERROR writing on socket\n");
+    }
 
     char buffer[256];
-	bzero(buffer, 256);
+	  bzero(buffer, 256);
     num_bytes_read = read(socket, buffer, 256);
+
+    if (num_bytes_read < 0){
+      printf("ERROR writing on socket\n");
+    }
 
     if(strcmp (buffer, "OK") == 0){
         printf("Client: Tudo certo com o usuário.\n");
