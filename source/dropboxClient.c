@@ -52,8 +52,8 @@ executada quando for realizar upload de um arquivo.
 file – path/filename.ext do arquivo a ser enviado
 tag - numero da operação#file#cliente#
 UPLOAD */
-void send_file(char *file, int socket){
-    sendFileThroughSocket(file, socket);
+void send_file(char *file, char* buffer, int socket){
+    sendFileThroughSocket(file, buffer, socket);
 }
 
 
@@ -62,8 +62,8 @@ Deverá ser executada quando for realizar download
 de um arquivo.
 file –filename.ext
 DOWNLOAD */
-void get_file(char *file, int socket){
-    receiveFileThroughSocket(file, socket);
+void get_file(char *file, char* buffer, int socket){
+    receiveFileThroughSocket(file, buffer, socket);
 }
 
 /* Fecha a conexão com o servidor */
@@ -92,18 +92,11 @@ int user_verification(int socket, char* userid){
     }
 }
 
-void send_message_to_server(int socket, char* message){
-
-    int num_bytes_sent;
-    int buffer_size = strlen(message);
-	num_bytes_sent = write(socket, message, buffer_size);
-
-}
-
 int main(int argc, char *argv[]){
 
     int socket_id;
     char userid[MAXNAME];
+    char buffer[256];
 
     /* Teste se todos os argumentos foram informados ao executar o cliente */
     if (argc < 4) {
@@ -125,17 +118,18 @@ int main(int argc, char *argv[]){
     /* Se o usuário está OK, então pode executar ações */
     if(pass == 0){
         printf("Usuário verificado, pode prosseguir.\n\n");
-        char line[110];
         char command[10];
         char fileName[100];
+        char line[110];
         while(1){
             bzero(line, 110);
+            bzero(buffer, 256);
             bzero(command, 10);
             bzero(fileName,100);
             printf("\n\nDigite seu comando no formato: \nupload <filename.ext> \ndownload <filename.ext> \nlist \nget_sync_dir \nexit\n ");
             scanf ("%[^\n]%*c", line);
 
-            int i, flag = 0, count=0;
+            /*int i, flag = 0, count=0;
             for(i=0; i<strlen(line); i++){            
                 if(line[i] == ' '){ //Se for igual, começa o nome do arquivo.
                     flag = 1;
@@ -149,17 +143,27 @@ int main(int argc, char *argv[]){
                         count++;
                     }
                 }
-            }
+            }*/
 
+            const char s[2] = " ";
+            char *token;
+            token = strtok(line, s);
+            strcpy(command, token);
+            token = strtok(NULL, s);
+            strcpy(fileName, token);
+
+            //printf("comando: %s - filename: %s\n", command, fileName);
+
+            //junta tudo #
+            strcat(buffer, command);
+            strcat(buffer, "#");
+            strcat(buffer, fileName);
+            strcat(buffer, "#");
             if( strcmp("upload", command) == 0){
-                send_message_to_server(socket_id, command); //envia p server que comando será executado
-                send_message_to_server(socket_id, fileName); //envia p server o nome do arquivo
-                send_file(fileName, socket_id); //executa a função do client
+                send_file(fileName, buffer, socket_id); //executa a função do client
 
             }else if( strcmp("download", command) == 0){
-                send_message_to_server(socket_id, command);
-                send_message_to_server(socket_id, fileName);
-                get_file(fileName, socket_id);
+                get_file(fileName, buffer, socket_id);
 
             }else if( strcmp("list", command) == 0){
                 //falta uma função para a list

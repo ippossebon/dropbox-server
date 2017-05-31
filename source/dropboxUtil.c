@@ -16,6 +16,7 @@ int writeFileToBuffer(char* filename, char* buffer){
     FILE *file;
     file = fopen(filename, "r");
     int i = 0;
+    int bufferSize = strlen(buffer);
 
     if (file == NULL){
         printf("[writeFileToBuffer] Erro ao escrever arquivo no buffer.\n");
@@ -24,7 +25,7 @@ int writeFileToBuffer(char* filename, char* buffer){
     else{
         int c;
         while ((c = getc(file)) != EOF){
-            buffer[i] = c;
+            buffer[i+bufferSize] = c;
             i++;
         }
     }
@@ -67,8 +68,8 @@ int existsClientFolder(char* client_id){
     }
 }
 
-void sendFileThroughSocket(char *file, int socket){
-    char buffer[256];
+void sendFileThroughSocket(char *file, char* buffer, int socket){
+
     int aux;
 
     aux = writeFileToBuffer(file, buffer);
@@ -88,8 +89,8 @@ void sendFileThroughSocket(char *file, int socket){
     bzero(buffer,256);
 }
 
-void receiveFileThroughSocket(char* file, int socket){
-    char buffer[256];
+void receiveFileThroughSocket(char* file, char* buffer, int socket){
+
     int num_bytes_read;
 	bzero(buffer, 256);
     num_bytes_read = read(socket, buffer, 256);

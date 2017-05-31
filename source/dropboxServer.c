@@ -36,15 +36,15 @@ void sync_dir(char* client_id){
 /* Recebe um arquivo file do cliente.
 Deverá ser executada quando for realizar upload de um arquivo.
 file – path/filename.ext do arquivo a ser recebido */
-void receive_file(char *file, int socket){
-	receiveFileThroughSocket(file, socket);
+void receive_file(char *file, char* buffer, int socket){
+	receiveFileThroughSocket(file, buffer, socket);
 }
 
 /* Envia o arquivo file para o usuário.
 Deverá ser executada quando for realizar download de um arquivo.
 file – filename.ext */
-void send_file(char *file, int socket){
-	sendFileThroughSocket(file, socket);
+void send_file(char *file, char* buffer, int socket){
+	sendFileThroughSocket(file, buffer, socket);
 }
 
 void user_verification(int socket){
@@ -67,29 +67,32 @@ void user_verification(int socket){
 void receive_command_client(int socket){
 
     char buffer[256];
-    int num_bytes_read;
-    num_bytes_read = read(socket, buffer, 256); //Lê o comando: upload, download, list ou get_sync
+    char command[10];
+    char fileName[100];
+    int num_bytes_read = read(socket, buffer, 256); //recebe #comando#filename#arquivo (se existirem)
     if (num_bytes_read < 0){
         printf("ERROR reading from socket");
     }
 
-    printf("comando: %s\n", buffer);
-    if( strcmp("upload", buffer) == 0){
-	    bzero(buffer, 256);
-        num_bytes_read = read(socket, buffer, 256); //Le o nome do arquivo
-        printf("file: %s\n", buffer);
-        receive_file(buffer, socket);
+    const char s[2] = "#";
+    char *token;
+    token = strtok(buffer, s);
+    strcpy(command, token);
+    token = strtok(NULL, s);
+    strcpy(fileName, token);
 
-    }else if( strcmp("download", buffer) == 0){
-	    bzero(buffer, 256);
-        num_bytes_read = read(socket, buffer, 256); //Le o nome do arquivo
-        printf("file: %s\n", buffer);
-        send_file(buffer, socket);
+    printf("comando: %s - filename: %s\n", command, fileName);
 
-    }else if( strcmp("list", buffer) == 0){
+    if( strcmp("upload", command) == 0){
+        receive_file(fileName, buffer, socket);
+
+    }else if( strcmp("download", command) == 0){
+        send_file(fileName, buffer, socket);
+
+    }else if( strcmp("list", command) == 0){
         //função para a list
 
-    }else if( strcmp("get_sync_dir", buffer) == 0){
+    }else if( strcmp("get_sync_dir", command) == 0){
         //sync_client(){
     }  
 }
