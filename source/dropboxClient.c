@@ -53,7 +53,7 @@ file – path/filename.ext do arquivo a ser enviado
 tag - numero da operação#file#cliente#
 UPLOAD */
 void send_file(char *file, char* buffer, int socket){
-    printf("[send_file] file: %s - buffer: %s\n", file, buffer );
+    //printf("[send_file] file: %s - buffer: %s\n", file, buffer );
     sendFileThroughSocket(file, buffer, socket);
 }
 
@@ -82,7 +82,8 @@ int user_verification(int socket, char* userid){
     num_bytes_sent = write(socket, userid, buffer_size);
 
     if (num_bytes_sent < 0){
-      printf("ERROR writing on socket\n");
+      printf("[user_verification] ERROR writing on socket\n");
+      exit(1);
     }
 
     char buffer[256];
@@ -90,14 +91,15 @@ int user_verification(int socket, char* userid){
     num_bytes_read = read(socket, buffer, 256);
 
     if (num_bytes_read < 0){
-      printf("ERROR writing on socket\n");
+      printf("[user_verification] ERROR writing on socket\n");
+      exit(1);
     }
 
     if(strcmp (buffer, "OK") == 0){
-        printf("Client: Tudo certo com o usuário.\n");
+        printf("Usuário autenticado.\n");
         return 0;
     }else{
-        printf("Client: deu merdaaaaaaaaaaa com o usuário. \n");
+        printf("ERRO: Usuário não autenticado.\n");
         return 1;
     }
 }
@@ -111,14 +113,14 @@ int main(int argc, char *argv[]){
     /* Teste se todos os argumentos foram informados ao executar o cliente */
     if (argc < 4) {
         printf("Usage: client_id host port.\n");
-		exit(0);
+		    exit(0);
     }
 
     /* Conecta ao servidor com o endereço e porta informados, retornando o socket_id */
     socket_id = connect_server(argv[2], atoi(argv[3]));
     if(socket_id < 0){
         printf("Erro. Não foi possível conectar ao servidor.\n");
-		exit(0);
+		    exit(0);
     }
 
     /* Userid informado pelo usuário */
@@ -127,73 +129,68 @@ int main(int argc, char *argv[]){
 
     /* Se o usuário está OK, então pode executar ações */
     if(pass == 0){
-        printf("Usuário verificado, pode prosseguir.\n\n");
         char command[10];
         char fileName[100];
         char line[110];
+
         while(1){
             bzero(line, 110);
             bzero(buffer, 256);
             bzero(command, 10);
             bzero(fileName,100);
+
             printf("\n\nDigite seu comando no formato: \nupload <filename.ext> \ndownload <filename.ext> \nlist \nget_sync_dir \nexit\n ");
             scanf ("%[^\n]%*c", line);
 
-            /*int i, flag = 0, count=0;
-            for(i=0; i<strlen(line); i++){
-                if(line[i] == ' '){ //Se for igual, começa o nome do arquivo.
-                    flag = 1;
-                }
-
-                if(flag == 0){ //Lendo nome do comando
-                    command[i] = line[i];
-                }else{ //Lendo nome do arquivo
-                    if(line[i] != ' '){
-                        fileName[count] = line[i];
-                        count++;
-                    }
-                }
-            }*/
-
-            const char s[2] = " ";
             char *token;
-            token = strtok(line, s);
+            token = strtok(line, " ");
             strcpy(command, token);
-            token = strtok(NULL, s);
+            token = strtok(NULL, " ");
             strcpy(fileName, token);
 
-            //printf("comando: %s - filename: %s\n", command, fileName);
-            bzero(buffer, 256);
-            //junta tudo #
+            /* Monta a linha de comando no formato: comando#nome_arquivo#conteudo_arquivo */
             strcat(buffer, command);
             strcat(buffer, "#");
             strcat(buffer, fileName);
             strcat(buffer, "#");
-            if( strcmp("upload", command) == 0){
-                send_file(fileName, buffer, socket_id); //executa a função do client
-                printf("buffer depois de enviar: %s\n", buffer);
-            }else if( strcmp("download", command) == 0){
-                get_file(fileName, buffer, socket_id);
 
-            }else if( strcmp("list", command) == 0){
+            /* Realiza a operação solicitada */
+            if( strcmp("upload", command) == 0){
+                send_file(fileName, buffer, socket_id);
+            }
+            else if( strcmp("download", command) == 0){
+              /*TODO: fazer funcionar*/
+                int n;
+                char file_data[256];
+                n = read(socket_id, file_data, 256);
+
+                if (n < 0){
+                  printf("Erro ao ler do socket\n");
+                }
+                writeBufferToFile(fileName, file_data);
+            }
+            else if( strcmp("list", command) == 0){
                 //falta uma função para a list
                 //enviar comando
 
-            }else if( strcmp("get_sync_dir", command) == 0){
+            }
+            else if( strcmp("get_sync_dir", command) == 0){
                 //sync_client(){
 
-            }else if( strcmp("exit", command) == 0){
+            }
+            else if( strcmp("exit", command) == 0){
                 printf("Adeus! \n");
                 break;
 
-            }else{
+            }
+            else{
                 printf("Comando inválido.\n");
+                break;
             }
         }
     }
 
-	close(socket_id);
-
+	  close(socket_id);
 
     return 0;
 }
