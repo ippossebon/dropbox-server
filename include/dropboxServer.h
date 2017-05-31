@@ -22,7 +22,7 @@ struct client {
 
 
 void sync_server();
-void receive_file(char *file, int socket);
+void receive_file(char *file, char* buffer, int socket);
 void sync_dir(char* client_id);
 void send_file(char *file, int socket);
 

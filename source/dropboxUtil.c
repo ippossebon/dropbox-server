@@ -18,6 +18,7 @@ int writeFileToBuffer(char* filename, char* buffer){
     FILE *file;
     file = fopen(filename, "r");
     int i = 0;
+    int bufferSize = strlen(buffer);
 
     if (file == NULL){
         printf("[writeFileToBuffer] Erro ao escrever arquivo no buffer.\n");
@@ -26,11 +27,12 @@ int writeFileToBuffer(char* filename, char* buffer){
     else{
         int c;
         while ((c = getc(file)) != EOF){
-            buffer[i] = c;
+            buffer[i+bufferSize] = c;
             i++;
         }
-    fclose(file);
     }
+    fclose(file);
+
     return 0;
 }
 
@@ -44,6 +46,7 @@ int writeBufferToFile(char* filename, char* buffer){
         return ERRO;
     }
 
+    fclose(file);
     return 0;
 }
 
@@ -53,6 +56,7 @@ char* getClientFolderName(char* client_id){
 
     strcat(full_path, path);
     strcat(full_path, client_id);
+    strcat(full_path, "/");
 
     return full_path;
 }
@@ -68,8 +72,8 @@ int existsClientFolder(char* client_id){
     }
 }
 
-void sendFileThroughSocket(char *file, int socket){
-    char buffer[256];
+void sendFileThroughSocket(char *file, char* buffer, int socket){
+
     int aux;
 
     aux = writeFileToBuffer(file, buffer);
@@ -77,21 +81,25 @@ void sendFileThroughSocket(char *file, int socket){
         printf("Erro ao abrir arquivo.\n");
     }
 
+    printf("[sendFileThroughSocket] buffer para enviar: %s\n", buffer);
     /* Envia conteúdo do buffer pelo socket */
     int num_bytes_sent;
     int buffer_size = strlen(buffer);
-	num_bytes_sent = write(socket, buffer, buffer_size);
+	  num_bytes_sent = write(socket, buffer, buffer_size);
 
     if (num_bytes_sent < 0){
         printf("ERROR writing to socket\n");
     }
 
+    printf("[sendFileThroughSocket] num_bytes_sent: %d\n", num_bytes_sent);
+
     bzero(buffer,256);
 }
 
-void receiveFileThroughSocket(char* file, int socket){
-    char buffer[256];
+void receiveFileThroughSocket(char* file, char* buffer, int socket){
+
     int num_bytes_read;
+	bzero(buffer, 256);
     num_bytes_read = read(socket, buffer, 256);
 
     if (num_bytes_read < 0){
