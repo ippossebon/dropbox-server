@@ -68,22 +68,48 @@ void receive_command_client(int socket){
 
     char buffer[256];
     char command[10];
-    char fileName[100];
-    int num_bytes_read = read(socket, buffer, 256); //recebe #comando#filename#arquivo (se existirem)
+    char* fileName;
+    int num_bytes_read = read(socket, buffer, 256); //recebe comando#filename#arquivo (se existirem)
     if (num_bytes_read < 0){
         printf("ERROR reading from socket");
     }
 
-    const char s[2] = "#";
-    char *token;
-    token = strtok(buffer, s);
-    strcpy(command, token);
-    token = strtok(NULL, s);
-    strcpy(fileName, token);
+    //const char s[2] = "#";
+    // char *token;
+    // token = strtok(buffer, '#');
+		// printf("token = %s\n", token);
+		// strcpy(command, token);
+		//
+    // fileName = strtok(token, '#');
+    // //strcpy(fileName, token);
+		//
+		 char file_data[512];
+		// file_data = strtok(NULL, '#');
+		char *p;
+		int i = 0;
+		for (p = strtok(buffer,"#"); p != NULL; p = strtok(NULL, "#"))
+		{
+		  if (i == 0){
+				strcpy(command, p);
+				printf("command: %s\n", command);
+				i++;
+			}
+			else if (i == 1){
+				strcpy(fileName, p);
+				printf("fileName: %s\n", fileName);
+				i++;
 
-    printf("comando: %s - filename: %s\n", command, fileName);
+			}
+			else{
+				strcpy(file_data, p);
+				printf("file_data: %s\n", file_data);
+			}
+		}
+
+
 
     if( strcmp("upload", command) == 0){
+				printf("buffer antes de chamar receive_file = %s\n", buffer);
         receive_file(fileName, buffer, socket);
 
     }else if( strcmp("download", command) == 0){
@@ -94,7 +120,7 @@ void receive_command_client(int socket){
 
     }else if( strcmp("get_sync_dir", command) == 0){
         //sync_client(){
-    }  
+    }
 }
 
 int main(int argc, char *argv[]){
@@ -125,7 +151,7 @@ int main(int argc, char *argv[]){
 		printf("ERROR on accept");
 
     /* "Limpa" os valores da memória */
-	bzero(buffer, 256);
+		bzero(buffer, 256);
 
     /* Faz verificação de usuário. TODO: verificar se existe, se ja está logado, etc */
     user_verification(new_socket_id);
@@ -133,7 +159,7 @@ int main(int argc, char *argv[]){
     /* Recebe o comando e redireciona para a função objetivo */
     receive_command_client(new_socket_id);
 
-	
+
 
 	close(new_socket_id);
 	close(server_socket_id);

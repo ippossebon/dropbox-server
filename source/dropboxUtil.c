@@ -17,6 +17,7 @@ int writeFileToBuffer(char* filename, char* buffer){
     file = fopen(filename, "r");
     int i = 0;
     int bufferSize = strlen(buffer);
+    printf("[writeFileToBuffer] buffer: %s - bufferSize: %d \n", buffer, bufferSize);
 
     if (file == NULL){
         printf("[writeFileToBuffer] Erro ao escrever arquivo no buffer.\n");
@@ -28,6 +29,7 @@ int writeFileToBuffer(char* filename, char* buffer){
             buffer[i+bufferSize] = c;
             i++;
         }
+        printf("[writeFileToBuffer] buffer com o conteudo = %s\n", buffer);
     }
     fclose(file);
     return 0;
@@ -77,14 +79,17 @@ void sendFileThroughSocket(char *file, char* buffer, int socket){
         printf("Erro ao abrir arquivo.\n");
     }
 
+    printf("[sendFileThroughSocket] buffer para enviar: %s\n", buffer);
     /* Envia conteúdo do buffer pelo socket */
     int num_bytes_sent;
     int buffer_size = strlen(buffer);
-	num_bytes_sent = write(socket, buffer, buffer_size);
+	  num_bytes_sent = write(socket, buffer, buffer_size);
 
     if (num_bytes_sent < 0){
         printf("ERROR writing to socket\n");
     }
+
+    printf("[sendFileThroughSocket] num_bytes_sent: %d\n", num_bytes_sent);
 
     bzero(buffer,256);
 }

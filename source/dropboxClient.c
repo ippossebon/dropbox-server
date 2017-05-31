@@ -53,6 +53,7 @@ file – path/filename.ext do arquivo a ser enviado
 tag - numero da operação#file#cliente#
 UPLOAD */
 void send_file(char *file, char* buffer, int socket){
+    printf("[send_file] file: %s - buffer: %s\n", file, buffer );
     sendFileThroughSocket(file, buffer, socket);
 }
 
@@ -130,13 +131,13 @@ int main(int argc, char *argv[]){
             scanf ("%[^\n]%*c", line);
 
             /*int i, flag = 0, count=0;
-            for(i=0; i<strlen(line); i++){            
+            for(i=0; i<strlen(line); i++){
                 if(line[i] == ' '){ //Se for igual, começa o nome do arquivo.
                     flag = 1;
                 }
 
-                if(flag == 0){ //Lendo nome do comando 
-                    command[i] = line[i]; 
+                if(flag == 0){ //Lendo nome do comando
+                    command[i] = line[i];
                 }else{ //Lendo nome do arquivo
                     if(line[i] != ' '){
                         fileName[count] = line[i];
@@ -153,7 +154,7 @@ int main(int argc, char *argv[]){
             strcpy(fileName, token);
 
             //printf("comando: %s - filename: %s\n", command, fileName);
-
+            bzero(buffer, 256);
             //junta tudo #
             strcat(buffer, command);
             strcat(buffer, "#");
@@ -161,7 +162,7 @@ int main(int argc, char *argv[]){
             strcat(buffer, "#");
             if( strcmp("upload", command) == 0){
                 send_file(fileName, buffer, socket_id); //executa a função do client
-
+                printf("buffer depois de enviar: %s\n", buffer);
             }else if( strcmp("download", command) == 0){
                 get_file(fileName, buffer, socket_id);
 
