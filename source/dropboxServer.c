@@ -67,55 +67,46 @@ void user_verification(int socket){
 }
 
 void receive_command_client(int socket){
-
     char buffer[256];
     char command[10];
-    char* fileName = malloc(sizeof(char) * 32);
-    int num_bytes_read = read(socket, buffer, 256); //recebe comando#filename#arquivo (se existirem)
-    if (num_bytes_read < 0){
-        printf("ERROR reading from socket");
+    char file_name[32];
+    int num_bytes_read;
+
+		num_bytes_read = read(socket, buffer, 256); // Recebe comando#filename#arquivo (se existirem)
+
+		if (num_bytes_read < 0){
+        printf("[receive_command_client] Erro ao ler do socket.");
     }
 
-    //const char s[2] = "#";
-    // char *token;
-    // token = strtok(buffer, '#');
-		// printf("token = %s\n", token);
-		// strcpy(command, token);
-		//
-    // fileName = strtok(token, '#');
-    // //strcpy(fileName, token);
-		//
-		 char file_data[512];
-		// file_data = strtok(NULL, '#');
+		char file_data[512];
 		char *p;
 		int i = 0;
+
+		/* Separa o buffer de acordo com as informações necessárias, onde o delimitador é #.*/
 		for (p = strtok(buffer,"#"); p != NULL; p = strtok(NULL, "#"))
 		{
 		  if (i == 0){
 				strcpy(command, p);
-				printf("command: %s\n", command);
-				i++;
 			}
 			else if (i == 1){
-				strcpy(fileName, p);
-				printf("fileName: %s\n", fileName);
-				i++;
-
+				strcpy(file_name, p);
 			}
 			else{
 				strcpy(file_data, p);
-				printf("file_data: %s\n", file_data);
 			}
+			i++;
 		}
 
-
-
+		/* Realizar a operação de acordo com o comando escolhido. */
     if( strcmp("upload", command) == 0){
-				printf("buffer antes de chamar receive_file = %s\n", buffer);
-        receive_file(fileName, buffer, socket);
+			/* file_data contém o conteúdo do arquivo a ser enviado para o servidor, e
+			filename é o nome do arquivo que está sendo enviado. */
+			// TODO: criar arquivo dentro do diretório do user
+				writeBufferToFile(file_name, file_data);
 
     }else if( strcmp("download", command) == 0){
-        send_file(fileName, buffer, socket);
+				bzero(buffer, 256);
+				//writeFileToBuffer(file_name, buffer);
 
     }else if( strcmp("list", command) == 0){
         //função para a list

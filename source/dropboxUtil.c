@@ -17,7 +17,6 @@ int writeFileToBuffer(char* filename, char* buffer){
     file = fopen(filename, "r");
     int i = 0;
     int bufferSize = strlen(buffer);
-    printf("[writeFileToBuffer] buffer: %s - bufferSize: %d \n", buffer, bufferSize);
 
     if (file == NULL){
         printf("[writeFileToBuffer] Erro ao escrever arquivo no buffer.\n");
@@ -29,7 +28,6 @@ int writeFileToBuffer(char* filename, char* buffer){
             buffer[i+bufferSize] = c;
             i++;
         }
-        printf("[writeFileToBuffer] buffer com o conteudo = %s\n", buffer);
     }
     fclose(file);
     return 0;
@@ -40,7 +38,7 @@ int writeBufferToFile(char* filename, char* buffer){
     file = fopen(filename, "w");
     int buffer_size = strlen(buffer);
 
-    if (fwrite(buffer, sizeof(buffer), buffer_size, file) != buffer_size){
+    if (fwrite(buffer, 1, buffer_size, file) != buffer_size){
         printf("[writeBufferToFile] Erro ao escrever buffer em arquivo.\n");
         return ERRO;
     }
