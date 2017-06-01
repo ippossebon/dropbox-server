@@ -130,7 +130,6 @@ void receive_command_client(int socket){
 			i++;
 		}
 
-    printf("comando: %s\n", command);		
     /* Realizar a operação de acordo com o comando escolhido. */
     if( strcmp("upload", command) == 0){
         receive_file(file_name, file_data);

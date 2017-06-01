@@ -61,7 +61,6 @@ void send_file(char *file, char* buffer, int socket){
         printf("Erro ao abrir arquivo.\n");
     }
 
-    printf("[sendFileThroughSocket] buffer para enviar: %s\n", buffer);
     /* Envia conteúdo do buffer pelo socket */
     int num_bytes_sent;
     int buffer_size = strlen(buffer);
