@@ -12,5 +12,6 @@ char* getClientFolderName(char* client_id);
 int existsClientFolder(char* client_id);
 void sendFileThroughSocket(char *file, char* buffer, int socket);
 void receiveFileThroughSocket(char *file, char* buffer, int socket);
+int existsFolder(char* path_folder);
 
 #endif

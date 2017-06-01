@@ -99,6 +99,32 @@ void get_file(char *file, char* line, int socket){
     writeBufferToFile(file, buffer);
 }
 
+void list(char* line, int socket){
+    int num_bytes_read, num_bytes_sent;
+    char buffer[256];
+	bzero(buffer, 256);
+ 
+    num_bytes_sent = write(socket, line, strlen(line)); //enviar o #list#
+    if (num_bytes_sent < 0){
+        printf("[list] ERROR writing from socket");
+    }
+
+    /* Lê o nome dos arquivos que vem no buffer no formato: file1#file2#file# */
+    num_bytes_read = read(socket, buffer, 256);
+
+    if (num_bytes_read < 0){
+        printf("[list] ERROR reading from socket");
+
+    }
+
+    printf("*** Arquivo(s): ***\n");
+    char *p;
+    for (p = strtok(buffer,"#"); p != NULL; p = strtok(NULL, "#")){
+	    printf(">> %s\n", p);		
+    }
+}
+
+
 /* Fecha a conexão com o servidor */
 void close_connection(){
 
@@ -135,6 +161,7 @@ int user_verification(int socket, char* userid){
         return 1;
     }
 }
+
 
 int main(int argc, char *argv[]){
 
@@ -174,11 +201,18 @@ int main(int argc, char *argv[]){
             printf("\n\nDigite seu comando no formato: \nupload <filename.ext> \ndownload <filename.ext> \nlist \nget_sync_dir \nexit\n ");
             scanf ("%[^\n]%*c", line);
 
-            char *token;
-            token = strtok(line, " ");
-            strcpy(command, token);
-            token = strtok(NULL, " ");
-            strcpy(fileName, token);
+            int i=0;
+            char *p;
+            for (p = strtok(line," "); p != NULL; p = strtok(NULL, " ")){
+		        if (i == 0){
+				    strcpy(command, p);
+			    }
+			    else{
+				    strcpy(fileName, p);
+			    }
+
+			    i++;
+		    }
 
             /* Monta a linha de comando no formato: comando#nome_arquivo#conteudo_arquivo */
             strcat(buffer, command);
@@ -188,15 +222,15 @@ int main(int argc, char *argv[]){
 
             /* Realiza a operação solicitada */
             if( strcmp("upload", command) == 0){
-                send_file(fileName, buffer, socket_id);
+                send_file(fileName, buffer, socket_id);                
             }
             else if( strcmp("download", command) == 0){
               /*TODO: fazer funcionar*/
               get_file(fileName, buffer, socket_id);
             }
             else if( strcmp("list", command) == 0){
-                //falta uma função para a list
-                //enviar comando
+
+              list(buffer, socket_id);
 
             }
             else if( strcmp("get_sync_dir", command) == 0){

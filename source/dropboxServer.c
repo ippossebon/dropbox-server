@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <dirent.h>
 
 #include "../include/dropboxServer.h"
 #include "../include/dropboxUtil.h"
@@ -45,8 +46,6 @@ void receive_file(char *file_name, char* file_data){
 	char *full_path = getClientFolderName(username);
 	strcat(full_path, file_name);
 
-
-    /*  ../server/client_folders//teste2.txt <<<<<<<<< ver essa saido com dois "//" ae, funciona mas ta estranho*/   
     //printf("Folder do cliente: %s\n", full_path);
 	/* Cria um novo arquivo, na pasta do cliente logado, com o nome do arquivo
 	informado, com o conteúdo do arquivo enviado pelo socket. */
@@ -73,27 +72,65 @@ void send_file(char *file_name, int socket){
 	}
 }
 
+void list(int socket){
+
+    char* full_path = getClientFolderName(username);
+    char buffer[256];
+    bzero(buffer, 256);
+
+    printf("Full path: %s \n", full_path);
+    DIR *d;
+    struct dirent *dir;
+    d = opendir(full_path);
+    printf("Consegui abrir full\n");
+    if (d){
+        /* Itera em todos os arquivo da pasta do cliente e coloca o nome dos 
+            arquivos dentro do buffer separados por '#' ex: file1#file2#file3# */
+        while ((dir = readdir(d)) != NULL){
+            if (dir->d_type == DT_REG){
+                strcat(buffer, dir->d_name);
+                strcat(buffer, "#");
+            }       
+        }
+        closedir(d);
+    }
+
+	int n;
+    int size = strlen(buffer);
+    /* Envia para o client os nomes dos arquivos */
+	n = write(socket, buffer, size);
+	if (n < 0){
+		printf("Erro ao escrever no socket - Download\n");
+	}
+
+}
+
 void user_verification(int socket){
 
     char buffer[256];
+    bzero(buffer, 256);
     int num_bytes_read, num_bytes_sent;
 
+    /* No buffer vem o userid do cliente que esta tentando conectar */
     num_bytes_read = read(socket, buffer, 256);
     if (num_bytes_read < 0){
         printf("[user_verification] ERROR reading from socket \n");
     }
 
-		/*
-		TODO: verificações de numero de dispositivos, se o cliente já é cadastrado,
-		etc
-		*/
+    strcpy(username, buffer);
+	/*
+	TODO: verificações de numero de dispositivos, se o cliente já é cadastrado,
+	etc
 
-		bzero(buffer, 256);
+        criar a pasta dele caso n exista?
+	*/
+
+    bzero(buffer, 256);
     num_bytes_sent = write(socket, "OK", 3);
 
-		if (num_bytes_sent < 0){
-			printf("[user_verification] ERROR writing on socket\n");
-		}
+	if (num_bytes_sent < 0){
+		printf("[user_verification] ERROR writing on socket\n");
+	}
 }
 
 void receive_command_client(int socket){
@@ -116,8 +153,7 @@ void receive_command_client(int socket){
         }
 
 		/* Separa o buffer de acordo com as informações necessárias, onde o delimitador é #.*/
-		for (p = strtok(buffer,"#"); p != NULL; p = strtok(NULL, "#"))
-		{
+		for (p = strtok(buffer,"#"); p != NULL; p = strtok(NULL, "#")){
 		  if (i == 0){
 				strcpy(command, p);
 			}
@@ -138,8 +174,7 @@ void receive_command_client(int socket){
         send_file(file_name, socket);
 
     }else if( strcmp("list", command) == 0){
-        //função para a list
-				// Utilizar chamada de sistema "ls"
+        list(socket);
 
     }else if( strcmp("get_sync_dir", command) == 0){
         //sync_client(){

@@ -69,6 +69,13 @@ int existsClientFolder(char* client_id){
     }
 }
 
+/* Passar todo o caminho do arquivo */
+int existsFolder(char* path_folder){
+    struct stat buffer;   
+    return (stat (path_folder, &buffer) == 0);
+
+}
+
 /*
 void sendFileThroughSocket(char *file, char* buffer, int socket){
 
