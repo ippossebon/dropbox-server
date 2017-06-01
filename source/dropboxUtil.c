@@ -72,6 +72,7 @@ int existsClientFolder(char* client_id){
     }
 }
 
+/*
 void sendFileThroughSocket(char *file, char* buffer, int socket){
 
     int aux;
@@ -82,7 +83,7 @@ void sendFileThroughSocket(char *file, char* buffer, int socket){
     }
 
     printf("[sendFileThroughSocket] buffer para enviar: %s\n", buffer);
-    /* Envia conteúdo do buffer pelo socket */
+
     int num_bytes_sent;
     int buffer_size = strlen(buffer);
 	  num_bytes_sent = write(socket, buffer, buffer_size);
@@ -108,3 +109,4 @@ void receiveFileThroughSocket(char* file, char* buffer, int socket){
 
     writeBufferToFile(file, buffer);
 }
+*/

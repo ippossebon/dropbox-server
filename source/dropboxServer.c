@@ -39,13 +39,38 @@ void sync_dir(char* client_id){
 /* Recebe um arquivo file do cliente.
 Deverá ser executada quando for realizar upload de um arquivo.
 file – path/filename.ext do arquivo a ser recebido */
-void receive_file(char *file, char* buffer, int socket){
+void receive_file(char *file_name, char* file_data){
+    /* file_data contém o conteúdo do arquivo a ser enviado para o servidor, e
+	filename é o nome do arquivo que está sendo enviado. */
+	char *full_path = getClientFolderName(username);
+	strcat(full_path, file_name);
+
+
+    /*  ../server/client_folders//teste2.txt <<<<<<<<< ver essa saido com dois "//" ae, funciona mas ta estranho*/   
+    //printf("Folder do cliente: %s\n", full_path);
+	/* Cria um novo arquivo, na pasta do cliente logado, com o nome do arquivo
+	informado, com o conteúdo do arquivo enviado pelo socket. */
+	writeBufferToFile(full_path, file_data);
 }
 
 /* Envia o arquivo file para o usuário.
 Deverá ser executada quando for realizar download de um arquivo.
 file – filename.ext */
-void send_file(char *file, int socket){
+void send_file(char *file_name, int socket){
+
+	char* full_path = getClientFolderName(username);
+	strcat(full_path, file_name);
+
+    char file_data[256];
+    bzero(file_data, 256);
+	writeFileToBuffer(full_path, file_data);
+
+	int n;
+    int size = strlen(file_data);
+	n = write(socket, file_data, size);
+	if (n < 0){
+		printf("Erro ao escrever no socket - Download\n");
+	}
 }
 
 void user_verification(int socket){
@@ -76,6 +101,8 @@ void receive_command_client(int socket){
     char command[10];
     char file_name[32];
     int num_bytes_read;
+    bzero(buffer, 256);
+           
 
 		char file_data[256];
 		char *p;
@@ -85,8 +112,8 @@ void receive_command_client(int socket){
 		num_bytes_read = read(socket, buffer, 256);
 
 		if (num_bytes_read < 0){
-        printf("[receive_command_client] Erro ao ler linha de comando do socket.\n");
-    }
+            printf("[receive_command_client] Erro ao ler linha de comando do socket.\n");
+        }
 
 		/* Separa o buffer de acordo com as informações necessárias, onde o delimitador é #.*/
 		for (p = strtok(buffer,"#"); p != NULL; p = strtok(NULL, "#"))
@@ -103,30 +130,12 @@ void receive_command_client(int socket){
 			i++;
 		}
 
-		/* Realizar a operação de acordo com o comando escolhido. */
+    /* Realizar a operação de acordo com o comando escolhido. */
     if( strcmp("upload", command) == 0){
-			/* file_data contém o conteúdo do arquivo a ser enviado para o servidor, e
-			filename é o nome do arquivo que está sendo enviado. */
-			char *full_path = getClientFolderName(username);
-			strcat(full_path, file_name);
-
-			/* Cria um novo arquivo, na pasta do cliente logado, com o nome do arquivo
-			informado, com o conteúdo do arquivo enviado pelo socket. */
-			writeBufferToFile(full_path, file_data);
+        receive_file(file_name, file_data);
 
     }else if( strcmp("download", command) == 0){
-			/*TODO*/
-			char *full_path = getClientFolderName(username);
-			strcat(full_path, file_name);
-
-			writeFileToBuffer(full_path, file_data);
-
-			int n;
-			n = write(socket, file_data, strlen(file_data));
-			if (n < 0){
-				printf("Erro ao escrever no socket - Download\n");
-			}
-
+        send_file(file_name, socket);
 
     }else if( strcmp("list", command) == 0){
         //função para a list
