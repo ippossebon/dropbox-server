@@ -46,7 +46,7 @@ void receive_file(char *file_name, char* file_data){
 	strcat(full_path, file_name);
 
 
-    /*  ../server/client_folders//teste2.txt <<<<<<<<< ver essa saido com dois "//" ae, funciona mas ta estranho*/   
+    /*  ../server/client_folders//teste2.txt <<<<<<<<< ver essa saido com dois "//" ae, funciona mas ta estranho*/
     //printf("Folder do cliente: %s\n", full_path);
 	/* Cria um novo arquivo, na pasta do cliente logado, com o nome do arquivo
 	informado, com o conteúdo do arquivo enviado pelo socket. */
@@ -102,7 +102,7 @@ void receive_command_client(int socket){
     char file_name[32];
     int num_bytes_read;
     bzero(buffer, 256);
-           
+
 
 		char file_data[256];
 		char *p;
@@ -148,7 +148,7 @@ void receive_command_client(int socket){
 
 int main(int argc, char *argv[]){
 	int server_socket_id, new_socket_id;
-  struct sockaddr_in server_address, client_address;
+  	struct sockaddr_in server_address, client_address;
 	socklen_t client_len;
 	char buffer[256];
 
@@ -166,11 +166,10 @@ int main(int argc, char *argv[]){
 		printf("[main] ERROR on binding\n");
 	}
 
-  /* Informa que o socket em questões pode receber conexões, 5 indica o
-  tamanho da fila de mensagens */
+  	/* Informa que o socket em questões pode receber conexões, 5 indica o tamanho da fila de mensagens */
 	listen(server_socket_id, 5);
 
-  /* Aceita conexões de clientes */
+  	/* Aceita conexões de clientes */
 	client_len = sizeof(struct sockaddr_in);
 	if ((new_socket_id = accept(server_socket_id, (struct sockaddr *) &client_address, &client_len)) == -1){
 		printf("[main] ERROR on accept\n");
