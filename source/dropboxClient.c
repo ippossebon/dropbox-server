@@ -84,7 +84,7 @@ void get_file(char *file, char* line, int socket){
     int num_bytes_read, num_bytes_sent;
     char buffer[256];
 	bzero(buffer, 256);
- 
+
     num_bytes_sent = write(socket, line, strlen(line));
     if (num_bytes_sent < 0){
         printf("ERROR writing from socket");
@@ -157,16 +157,15 @@ int main(int argc, char *argv[]){
 
     /* Userid informado pelo usuário */
     strcpy (userid, argv[1]);
-    int pass = user_verification(socket_id, userid);
 
     /* Se o usuário está OK, então pode executar ações */
-    if(pass == 0){
+    if(user_verification(socket_id, userid) == 0){
         char command[10];
         char fileName[100];
-        char line[110];
+        char line[100];
 
         while(1){
-            bzero(line, 110);
+            bzero(line, 100);
             bzero(buffer, 256);
             bzero(command, 10);
             bzero(fileName,100);
