@@ -11,7 +11,9 @@
 
 struct stat st = {0};
 
-/* Lê um arquivo local e escreve no buffer. */
+/* Lê um arquivo local e escreve no buffer.
+Considerar caso em que file é maior que buffer -> Adaptar para tamanhos
+variáveis. */
 int writeFileToBuffer(char* filename, char* buffer){
     FILE *file;
     file = fopen(filename, "r");
@@ -30,6 +32,7 @@ int writeFileToBuffer(char* filename, char* buffer){
         }
     }
     fclose(file);
+
     return 0;
 }
 
