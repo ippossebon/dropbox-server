@@ -78,11 +78,10 @@ void list(int socket){
     char buffer[256];
     bzero(buffer, 256);
 
-    printf("Full path: %s \n", full_path);
     DIR *d;
     struct dirent *dir;
     d = opendir(full_path);
-    printf("Consegui abrir full\n");
+
     if (d){
         /* Itera em todos os arquivo da pasta do cliente e coloca o nome dos 
             arquivos dentro do buffer separados por '#' ex: file1#file2#file3# */
