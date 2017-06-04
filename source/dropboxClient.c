@@ -7,16 +7,17 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include "../include/dropboxUtil.h"
-#include <sys/inotify.h>
 #include <errno.h>
 #include <libgen.h>
+#include "../include/dropboxSync.h"
 
-#define EVENT_SIZE  ( sizeof (struct inotify_event) )
-#define EVENT_BUF_LEN     ( 1024 * ( EVENT_SIZE + 16 ) )
 
-/* Variáveis do INOTIFY */
-int fd;
-int wd;
+/*Globais*/
+
+
+file_node* current_files; //Lista de arquivos no diretório do compartilhado do usuário
+char sync_dir[255]; //Variável com o nome da pasta sync do usuário
+
 
 /* Conecta o cliente com o servidor.
 host – endereço do servidor
@@ -51,60 +52,10 @@ int connect_server(char *host, int port){
     return socket_id;
 }
 
-void add_watch_dir(){
-
-    /* criando instancia do INOTIFY */
-    fd = inotify_init();
-
-    /*checking for error*/
-    if ( fd < 0 ) {
-        perror( "erro: inotify_init" );
-    }
-
-    /*adding the “/tmp” directory into watch list. Here, the suggestion is to validate the existence of the directory before adding into monitoring list.*/
-    wd = inotify_add_watch( fd, "sync_dir_vic/", IN_CREATE | IN_DELETE | IN_MODIFY );
-}
-
 /* Sincroniza o diretório “sync_dir_<nomeusuário>” com
 o servidor */
 void sync_client(){
 
-    int length;
-    int i = 0;
-    char buffer[EVENT_BUF_LEN];
-
-    length = read( fd, buffer, EVENT_BUF_LEN ); 
-
-    /*checking for error*/
-    if ( length < 0 ) {
-        perror( "read" );
-    }  
-
-    while (i < length) {     
-        struct inotify_event *event = ( struct inotify_event * ) &buffer[ i ];     
-        if ( event->len ) {
-            if ( event->mask & IN_CREATE ) {
-                if ( event->mask & IN_ISDIR ) {
-                    printf( "New directory %s created.\n", event->name );
-                } else {
-                    printf( "New file %s created.\n", event->name );
-                }
-            } else if ( event->mask & IN_DELETE ) {
-                if ( event->mask & IN_ISDIR ) {
-                    printf( "Directory %s deleted.\n", event->name );
-                } else {
-                    printf( "File %s deleted.\n", event->name );
-                }
-            } else if ( event->mask & IN_MODIFY ) {
-                if ( event->mask & IN_ISDIR ) {
-                    printf( "Directory %s modify.\n", event->name );
-                } else {
-                    printf( "File %s modify.\n", event->name );
-                }
-            }
-        }
-        i += EVENT_SIZE + event->len;
-    }
 
 }
 
@@ -225,6 +176,7 @@ int user_verification(int socket, char* userid){
 
 int main(int argc, char *argv[]){
 
+
     int socket_id;
     char userid[MAXNAME];
     char buffer[256];
@@ -252,9 +204,19 @@ int main(int argc, char *argv[]){
         char fileName[100];
         char line[110];
 
-        add_watch_dir();
+
+        //Atualiza pasta do usuário
+        strcpy(sync_dir, "sync_dir_");
+        strcat(sync_dir, userid);
+        printf("Seu diretório sincronizado é [%s]\n",sync_dir);
+        //Monta a lista inicial de arquivos do diretório
+        current_files = fn_create_from_path(sync_dir);
+        fn_print(current_files);
+        
 
         while(1){
+
+
             bzero(line, 110);
             bzero(buffer, 256);
             bzero(command, 10);
@@ -266,15 +228,15 @@ int main(int argc, char *argv[]){
             int i=0;
             char *p;
             for (p = strtok(line," "); p != NULL; p = strtok(NULL, " ")){
-		        if (i == 0){
-				    strcpy(command, p);
-			    }
-			    else{
-				    strcpy(fileName, p);
-			    }
+               if (i == 0){
+                  strcpy(command, p);
+               }
+               else{
+                  strcpy(fileName, p);
+               }
 
-			    i++;
-		    }
+               i++;
+            }
 
             /* Monta a linha de comando no formato: comando#nome_arquivo#conteudo_arquivo */
             char* name = basename(fileName);
@@ -296,7 +258,7 @@ int main(int argc, char *argv[]){
               list(buffer, socket_id);
 
             }
-            else if( strcmp("get_sync_dir", command) == 0){
+            else if( strcmp("sync", command) == 0){
                 sync_client();
 
             }
