@@ -116,7 +116,9 @@ file_node* fn_add(file_node* list, file_info* file) {
 }
 
 file_info* fn_find(file_node* list, char *filename) {
-   for (file_node* node = list; node !=NULL; node = node->next) {
+  file_node* node;
+
+   for (node = list; node !=NULL; node = node->next) {
        file_info* file = node->data;
        if (strcmp(file->name,filename) == 0) {
           return file;
@@ -167,7 +169,9 @@ file_node* fn_del(file_node* list, char* filename) {
 
 void fn_print(file_node* list) {
    printf("----------------------------------\n");
-   for (file_node* node = list; node !=NULL; node = node->next) {
+   file_node* node;
+
+   for (node = list; node !=NULL; node = node->next) {
        file_info* file = node->data;
        printf("Filename: %s, Modified: %s, Size: %d bytes\n", file->name, file->last_modified, file->size);
    }

@@ -1,7 +1,7 @@
 #ifndef __DROPBOXSERVER__
 #define	__DROPBOXSERVER__
 
-#include "../include/dropboxSync.h"
+#include "../include/dropboxUtil.h"
 
 #define MAXFILES 256
 #define ERRO -1

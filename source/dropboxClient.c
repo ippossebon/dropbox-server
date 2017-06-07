@@ -9,11 +9,8 @@
 #include "../include/dropboxUtil.h"
 #include <errno.h>
 #include <libgen.h>
-#include "../include/dropboxSync.h"
-
 
 /*Globais*/
-
 
 file_node* current_files; //Lista de arquivos no diretório do compartilhado do usuário
 char sync_dir[255]; //Variável com o nome da pasta sync do usuário
@@ -95,7 +92,7 @@ void get_file(char *file, char* line, int socket){
     int num_bytes_read, num_bytes_sent;
     char buffer[256];
 	bzero(buffer, 256);
- 
+
     num_bytes_sent = write(socket, line, strlen(line));
     if (num_bytes_sent < 0){
         printf("ERROR writing from socket");
@@ -114,7 +111,7 @@ void list(char* line, int socket){
     int num_bytes_read, num_bytes_sent;
     char buffer[256];
 	bzero(buffer, 256);
- 
+
     num_bytes_sent = write(socket, line, strlen(line)); //enviar o #list#
     if (num_bytes_sent < 0){
         printf("[list] ERROR writing from socket");
@@ -131,7 +128,7 @@ void list(char* line, int socket){
     printf("*** Arquivo(s): ***\n");
     char *p;
     for (p = strtok(buffer,"#"); p != NULL; p = strtok(NULL, "#")){
-	    printf(">> %s\n", p);		
+	    printf(">> %s\n", p);
     }
 }
 
@@ -212,7 +209,7 @@ int main(int argc, char *argv[]){
         //Monta a lista inicial de arquivos do diretório
         current_files = fn_create_from_path(sync_dir);
         fn_print(current_files);
-        
+
 
         while(1){
 
@@ -246,8 +243,8 @@ int main(int argc, char *argv[]){
             strcat(buffer, "#");
 
             /* Realiza a operação solicitada */
-            if( strcmp("upload", command) == 0){             
-                send_file(fileName, buffer, socket_id);                
+            if( strcmp("upload", command) == 0){
+                send_file(fileName, buffer, socket_id);
             }
             else if( strcmp("download", command) == 0){
               /*TODO: fazer funcionar*/
