@@ -83,13 +83,13 @@ void list(int socket){
     d = opendir(full_path);
 
     if (d){
-        /* Itera em todos os arquivo da pasta do cliente e coloca o nome dos 
+        /* Itera em todos os arquivo da pasta do cliente e coloca o nome dos
             arquivos dentro do buffer separados por '#' ex: file1#file2#file3# */
         while ((dir = readdir(d)) != NULL){
             if (dir->d_type == DT_REG){
                 strcat(buffer, dir->d_name);
                 strcat(buffer, "#");
-            }       
+            }
         }
         closedir(d);
     }
@@ -138,7 +138,7 @@ void receive_command_client(int socket){
     char file_name[32];
     int num_bytes_read;
     bzero(buffer, 256);
-           
+
 
 		char file_data[256];
 		char *p;
@@ -167,7 +167,7 @@ void receive_command_client(int socket){
 
     /* Realizar a operação de acordo com o comando escolhido. */
     if( strcmp("upload", command) == 0){
-        
+
         receive_file(file_name, file_data);
 
     }else if( strcmp("download", command) == 0){

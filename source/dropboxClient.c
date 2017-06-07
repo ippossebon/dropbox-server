@@ -11,10 +11,8 @@
 #include <libgen.h>
 
 /*Globais*/
-
 file_node* current_files; //Lista de arquivos no diretório do compartilhado do usuário
 char sync_dir[255]; //Variável com o nome da pasta sync do usuário
-
 
 /* Conecta o cliente com o servidor.
 host – endereço do servidor
