@@ -45,7 +45,7 @@ void receive_file(char *file_name, char* file_data){
 	char *full_path = getClientFolderName(username);
 	strcat(full_path, file_name);
 
-  //printf("Folder do cliente: %s\n", full_path);
+    //printf("Folder do cliente: %s\n", full_path);
 	/* Cria um novo arquivo, na pasta do cliente logado, com o nome do arquivo
 	informado, com o conteúdo do arquivo enviado pelo socket. */
 	writeBufferToFile(full_path, file_data);
@@ -55,16 +55,15 @@ void receive_file(char *file_name, char* file_data){
 Deverá ser executada quando for realizar download de um arquivo.
 file – filename.ext */
 void send_file(char *file_name, int socket){
-
 	char* full_path = getClientFolderName(username);
 	strcat(full_path, file_name);
 
-  char file_data[256];
-  bzero(file_data, 256);
+    char file_data[256];
+    bzero(file_data, 256);
 	writeFileToBuffer(full_path, file_data);
 
 	int n;
-  int size = strlen(file_data);
+    int size = strlen(file_data);
 	n = write(socket, file_data, size);
 	if (n < 0){
 		printf("Erro ao escrever no socket - Download\n");
@@ -72,52 +71,51 @@ void send_file(char *file_name, int socket){
 }
 
 void list(int socket){
+    char* full_path = getClientFolderName(username);
+    char buffer[256];
+    bzero(buffer, 256);
 
-  char* full_path = getClientFolderName(username);
-  char buffer[256];
-  bzero(buffer, 256);
+    DIR *d;
+    struct dirent *dir;
+    d = opendir(full_path);
 
-  DIR *d;
-  struct dirent *dir;
-  d = opendir(full_path);
-
-  if (d){
-    /* Itera em todos os arquivo da pasta do cliente e coloca o nome dos
-      arquivos dentro do buffer separados por '#' ex: file1#file2#file3# */
-    while ((dir = readdir(d)) != NULL){
-      if (dir->d_type == DT_REG){
-        strcat(buffer, dir->d_name);
-        strcat(buffer, "#");
-      }
+    if (d){
+        /* Itera em todos os arquivo da pasta do cliente e coloca o nome dos
+            arquivos dentro do buffer separados por '#' ex: file1#file2#file3# */
+        while ((dir = readdir(d)) != NULL){
+            if (dir->d_type == DT_REG){
+                strcat(buffer, dir->d_name);
+                strcat(buffer, "#");
+            }
+        }
+        closedir(d);
     }
-    closedir(d);
-  }
+    int n;
+    int size = strlen(buffer);
 
-	int n;
-  int size = strlen(buffer);
-  /* Envia para o client os nomes dos arquivos */
-	n = write(socket, buffer, size);
-	if (n < 0){
-		printf("Erro ao escrever no socket - Download\n");
-	}
+    /* Envia para o client os nomes dos arquivos */
+    n = write(socket, buffer, size);
+    if (n < 0){
+        printf("Erro ao escrever no socket - Download\n");
+    }
 }
 
+
 void auth(int socket){
+    char buffer[256];
+    int num_bytes_read, num_bytes_sent;
 
-  char buffer[256];
-  int num_bytes_read, num_bytes_sent;
-
-  num_bytes_read = read(socket, buffer, 256);
-  if (num_bytes_read < 0){
-    printf("[auth] ERROR reading from socket \n");
-  }
+    num_bytes_read = read(socket, buffer, 256);
+    if (num_bytes_read < 0){
+        printf("[auth] ERROR reading from socket \n");
+    }
 
 	/*
 	TO DO: verificações de numero de dispositivos, se o cliente já é cadastrado, etc
 	*/
 
-	bzero(buffer, 256);
-  num_bytes_sent = write(socket, "OK", 3);
+    bzero(buffer, 256);
+    num_bytes_sent = write(socket, "OK", 3);
 
 	if (num_bytes_sent < 0){
 		printf("[auth] ERROR writing on socket\n");
@@ -125,12 +123,11 @@ void auth(int socket){
 }
 
 void receive_command_client(int socket){
-  char buffer[256];
-  char command[10];
-  char file_name[32];
-  int num_bytes_read;
-  bzero(buffer, 256);
-
+    char buffer[256];
+    char command[10];
+    char file_name[32];
+    int num_bytes_read;
+    bzero(buffer, 256);
 
 	char file_data[256];
 	char *p;
@@ -140,8 +137,8 @@ void receive_command_client(int socket){
 	num_bytes_read = read(socket, buffer, 256);
 
 	if (num_bytes_read < 0){
-    printf("[receive_command_client] Erro ao ler linha de comando do socket.\n");
-  }
+        printf("[receive_command_client] Erro ao ler linha de comando do socket.\n");
+    }
 
 	/* Separa o buffer de acordo com as informações necessárias, onde o delimitador é #.*/
 	for (p = strtok(buffer,"#"); p != NULL; p = strtok(NULL, "#")){
@@ -155,23 +152,22 @@ void receive_command_client(int socket){
 			strcpy(file_data, p);
 		}
 		i++;
-	}
+    }
 
-  /* Realizar a operação de acordo com o comando escolhido. */
-  if( strcmp("upload", command) == 0){
-    receive_file(file_name, file_data);
-
-  }else if( strcmp("download", command) == 0){
-    send_file(file_name, socket);
-
-  }else if( strcmp("list", command) == 0){
-    list(socket);
-
-  }else if( strcmp("get_sync_dir", command) == 0){
-    //sync_client(){
-  }
+    /* Realizar a operação de acordo com o comando escolhido. */
+    if( strcmp("upload", command) == 0){
+        receive_file(file_name, file_data);
+    }
+    else if( strcmp("download", command) == 0){
+        send_file(file_name, socket);
+    }
+    else if( strcmp("list", command) == 0){
+        list(socket);
+    }
+    else if( strcmp("get_sync_dir", command) == 0){
+        //sync_client()
+    }
 }
-
 
 void *client_thread(void *new_socket_id){
 	/* Uns casts muito loucos */
@@ -189,15 +185,15 @@ void *client_thread(void *new_socket_id){
 	return 0;
 }
 
-
 int main(int argc, char *argv[]){
 	int server_socket_id, new_socket_id;
-  struct sockaddr_in server_address, client_address;
+    struct sockaddr_in server_address, client_address;
 	socklen_t client_len;
-	/* Talvez devêssemos alocar por malloc */
+
+    /* Talvez devêssemos alocar por malloc */
 	pthread_t c_thread;
 
-  /* Cria socket TCP para o servidor. */
+    /* Cria socket TCP para o servidor. */
 	if ((server_socket_id = socket(AF_INET, SOCK_STREAM, 0)) == -1){
 		printf("[main] ERROR opening socket\n");
 	}
@@ -211,30 +207,29 @@ int main(int argc, char *argv[]){
 		printf("[main] ERROR on binding\n");
 	}
 
-  /* Informa que o socket em questões pode receber conexões, 5 indica o
-  tamanho da fila de mensagens */
+    /* Informa que o socket em questões pode receber conexões, 5 indica o
+    tamanho da fila de mensagens */
 	listen(server_socket_id, 5);
 	client_len = sizeof(struct sockaddr_in);
 
 	/* Laço que fica aguardando conexões de clientes e criandos as threads*/
 	while(1){
-		/* Aguarda a conexão do cliente */
+	    /* Aguarda a conexão do cliente */
 		if((new_socket_id = accept(server_socket_id, (struct sockaddr *) &client_address, &client_len)) != ERRO){
-			/* Aloca dinamicamente para armazenar o número do socket e passar para a thread */
-			int *arg = malloc(sizeof(*arg));
-	    *arg = new_socket_id;
+    	    /* Aloca dinamicamente para armazenar o número do socket e passar para a thread */
+    		int *arg = malloc(sizeof(*arg));
+    	    *arg = new_socket_id;
 
-			/* Se conectou, cria a thread para o cliente */
-			if(pthread_create( &c_thread, NULL, client_thread, arg) != 0){
-				printf("[main] ERROR on thread creation.\n");
-				close(new_socket_id);
-			}
-		}
-		else{
-			printf("[main] ERROR on accept.\n");
-		}
-	}
-
+    		/* Se conectou, cria a thread para o cliente */
+    		if(pthread_create( &c_thread, NULL, client_thread, arg) != 0){
+    			printf("[main] ERROR on thread creation.\n");
+    			close(new_socket_id);
+    		}
+    		else{
+    			printf("[main] ERROR on accept.\n");
+    		}
+        }
+    }
 	close(server_socket_id);
 
 	return 0;
