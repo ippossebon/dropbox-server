@@ -17,22 +17,43 @@
 
 
 char username[MAXNAME];
+client_node* clients_list;
 
 /* Sincroniza o servidor com o diretório “sync_dir_<nomeusuário>”
 com o cliente. */
 void sync_server(){
 }
 
-void sync_dir(char* client_id){
 
-	if(existsClientFolder(client_id)){
+/* Verifica se existe o diretório sync_dir_user NO DISPOSITIVO DO CLIENTE.
+Retorna 0 se não existir; 1, caso contrário.
+Já deve criar o outro socket para fazer as operações de sync?*/
+int existsSyncFolderClient(char* path){
+    return 0;
+}
+
+/* O comando get_sync_dir é executado logo após o estabelecimento de uma conexão entre cliente e
+servidor. Toda vez que o comando get_sync_dir for executado, o servidor verificará se o diretório
+“sync_dir_<nomeusuário>” existe no dispositivo do cliente. Em caso afirmativo, nada deverá ser feito.
+Caso contrário, o diretório deverá ser criado e a sincronização ser efetuada pelo cliente */
+void get_sync_dir(char* client_id){
+	printf("Chegou no get_sync_dir com client_id: %s\n", client_id);
+
+	char sync_name[255];
+	strcat(sync_name, "sync_dir_");
+	strcat(sync_name, client_id);
+
+	/* O servidor deve verificar se existe uma pasta sync_dir_user no dispositivo
+	do cliente. */
+	if(existsSyncFolderClient(sync_name)){
 		/* Realiza a sincronização*/
-		printf("[sync_dir] O cliente possui uma pasta no servidor.\n");
+		printf("[sync_dir] Existe uma pasta %s no dispositivo do cliente.\n", sync_name);
 	}
 	else{
-		printf("[sync_dir] O cliente não possui uma pasta no servidor. Criando...\n");
-		char* path = getClientFolderName(client_id);
-		mkdir(path, 0700); /* 0700 corresponde ao modo administrador */
+		printf("[sync_dir] Não existe uma pasta %s no dispositivo do cliente. Criando... \n", sync_name);
+
+		/* TODO: Cria diretório sync_dir_user no dispositivo do cliente */
+		//mkdir(path, 0700); /* 0700 corresponde ao modo administrador */
 	}
 }
 
@@ -70,6 +91,7 @@ void send_file(char *file_name, int socket){
 	}
 }
 
+/* Lista todos os arquivos contidos no diretório remoto do cliente. */
 void list(int socket){
     char* full_path = getClientFolderName(username);
     char buffer[256];
@@ -110,13 +132,49 @@ void auth(int socket){
         printf("[auth] ERROR reading from socket \n");
     }
 
-	/*
-	TO DO: verificações de numero de dispositivos, se o cliente já é cadastrado, etc
-	*/
 
-    bzero(buffer, 256);
-    num_bytes_sent = write(socket, "OK", 3);
+    strcpy(username, buffer);
 
+	/* Verifica se o usuário em questão já é cadastrado ou se é um novo usuário.
+	Se for um novo usuário, cria uma struct para ele e adiciona-o a lista de clientes.
+	Caso contrário, verifica se o número de dispositivos logados é respeitado.
+	Se tudo estiver ok, envia mensagem de sucesso para o cliente e prossegue com
+	as operações. */
+	client* user = findUserInClientsList(clients_list, username);
+
+	if (user == NULL){
+		/* O usuário ainda não é cadastrado. */
+		struct client new_client;
+		strcpy(new_client.userid, username);
+
+		/*TODO: como inicializar a variavel devices? */
+		new_client.devices[0] = 0;
+		new_client.devices[1] = 0;
+
+		new_client.logged_in = 1;
+
+		clients_list = addClientToList(clients_list, &new_client);
+		printf("Novo usuário adicionado à lista!\n");
+		printClientsList(clients_list);
+	}
+	else{
+		/* Se o cliente já está cadastrado no sistema, verifica o número de
+		dispositivos nos quais está logado. */
+		if (user->devices[0] == 1 && user->devices[1] == 1){
+			printf("ERRO: Este cliente já está logado em dois dispositivos diferentes.\n");
+			return;
+		}
+
+		/* TODO: Como registrar o device em que ele está cadastrado? */
+
+		printf("Usuário liberado.\n");
+	}
+
+	/* Envia mensagem de sucesso para o cliente. */
+	bzero(buffer, 256);
+	num_bytes_sent = write(socket, "OK", 3);
+
+	printf("Mensagem de OK enviada ao cliente.\n");
 	if (num_bytes_sent < 0){
 		printf("[auth] ERROR writing on socket\n");
 	}
@@ -193,6 +251,9 @@ int main(int argc, char *argv[]){
     /* Talvez devêssemos alocar por malloc */
 	pthread_t c_thread;
 
+    /* Inicializa uma lista de clientes. */
+	clients_list = createClientsList();
+
     /* Cria socket TCP para o servidor. */
 	if ((server_socket_id = socket(AF_INET, SOCK_STREAM, 0)) == -1){
 		printf("[main] ERROR opening socket\n");
@@ -210,6 +271,7 @@ int main(int argc, char *argv[]){
     /* Informa que o socket em questões pode receber conexões, 5 indica o
     tamanho da fila de mensagens */
 	listen(server_socket_id, 5);
+
 	client_len = sizeof(struct sockaddr_in);
 
 	/* Laço que fica aguardando conexões de clientes e criandos as threads*/
@@ -230,7 +292,25 @@ int main(int argc, char *argv[]){
     		}
         }
     }
+	bzero(buffer, 256);
+
+    /* Faz verificação de usuário. TODO: verificar se existe, se ja está logado, etc */
+    user_verification(new_socket_id);
+
+
+	printf("voltou da autentificadcao de user.\n");
+
+	/* Após cada login do usuário, get_sync_dir deve ser chamado. */
+	get_sync_dir(username);
+
+    /* Recebe a linha de comando e redireciona para a função objetivo */
+    receive_command_client(new_socket_id);
+
+	close(new_socket_id);
+>>>>>>> Adiciona lista de clientes e funções que lidam com essa lista.
 	close(server_socket_id);
+
+	clients_list = clearClientsList(clients_list);
 
 	return 0;
 }

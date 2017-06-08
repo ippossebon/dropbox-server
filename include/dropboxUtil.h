@@ -19,6 +19,18 @@ typedef struct file_node {
    struct file_node* next;
 } file_node;
 
+/* Estrutura para lista de clientes cadastrados */
+typedef struct client {
+    int devices[2]; // associado aos dispositivos do usuário
+	char userid[MAXNAME]; //  id do usuário no servidor, que deverá ser único. Informado pela linha de comando.
+	struct file_info metadata[MAXFILES]; //metadados de cada arquivo que o cliente possui no servidor.
+    int logged_in; // cliente está logado ou não.
+} client;
+
+typedef struct client_node{
+    client* client;
+    struct client_node* next;
+} client_node;
 
 int writeFileToBuffer(char* filename, char* buffer);
 int writeBufferToFile(char* filename, char* buffer);
@@ -35,5 +47,12 @@ file_node* fn_del(file_node* list, char* filename); //Remove o arquivo com o nom
 file_info* fn_find(file_node* list, char *filename); //Busca um arquivo pelo nome (filename). Se não encontrar retorna NULL.
 file_node* fn_clear(file_node* list); //Limpa toda a lista
 void fn_print(file_node* list); //Imprime toda a lista para fins de debug
+
+client_node* createClientsList();
+client_node* addClientToList(client_node* list, client* user);
+client* findUserInClientsList(client_node* list, char *username);
+client_node* clearClientsList(client_node* list);
+client_node* removeClientFromList(client_node* list, char* username);
+void printClientsList(client_node* list);
 
 #endif

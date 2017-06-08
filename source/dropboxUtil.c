@@ -177,3 +177,84 @@ void fn_print(file_node* list) {
    }
    printf("----------------------------------\n");
 }
+
+/***** Funções para tratamento da lista de clientes. *******/
+client_node* createClientsList(){
+    return NULL;
+}
+
+/* Adiciona um novo cliente ao início da lista. */
+client_node* addClientToList(client_node* list, client* user) {
+   client_node* head = malloc(sizeof(client_node));
+   head->client = user;
+   head->next = list;
+
+   return head;
+}
+
+/* Procura pelo nome de um usuário na lista de clientes cadastrados. */
+client* findUserInClientsList(client_node* list, char *username) {
+  client_node* node;
+
+   for (node = list; node !=NULL; node = node->next) {
+       client* user = node->client;
+       if (strcmp(user->userid, username) == 0) {
+          return user;
+       }
+   }
+   return NULL;
+}
+
+client_node* clearClientsList(client_node* list) {
+   client_node* node = list;
+
+   while (node != NULL) {
+      client_node* next = node->next;
+      //Libera o nó
+      free(node->client);
+      free(node);
+      node = next;
+   }
+
+   return NULL;
+}
+
+client_node* removeClientFromList(client_node* list, char* username) {
+
+   client_node* previous = NULL;
+   client_node* node = list;
+
+   // Procura pelo usuário em questão
+   while (node != NULL && strcmp(node->client->userid, username) != 0) {
+       previous = node;
+       node = node->next;
+   }
+
+   if (node == NULL) { // Não achou, então retorna a lista original.
+      return list;
+   }
+
+   if (previous == NULL) { // Retira o primeiro elemento
+      list = node->next;
+   } else { // Retira do meio
+      previous->next = node->next;
+   }
+
+   //Desaloca nó removido
+   free(node->client);
+   free(node);
+
+   return list;
+}
+
+void printClientsList(client_node* list) {
+   printf("----------------------------------\n");
+   client_node* node;
+
+   for (node = list; node != NULL; node = node->next) {
+       client* user = node->client;
+       printf("Client name: %s, logged in: %d, device 0: %d, device 1: %d \n",
+            user->userid, user->logged_in, user->devices[0], user->devices[1]);
+   }
+   printf("----------------------------------\n");
+}
