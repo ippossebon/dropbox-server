@@ -10,9 +10,14 @@
 #include <errno.h>
 #include <libgen.h>
 
-/*Globais*/
+/* Globais */
+char host[128];
+int port;
+char userid[MAXNAME];
+
 file_node* current_files; //Lista de arquivos no diretório do compartilhado do usuário
 char sync_dir[255]; //Variável com o nome da pasta sync do usuário
+int sync_socket;
 
 /* Conecta o cliente com o servidor.
 host – endereço do servidor
@@ -168,99 +173,143 @@ int auth(int socket, char* userid){
   }
 }
 
+int check_sync_dir(){
+    sync_socket = connect_server(host, port+1);
 
-int main(int argc, char *argv[]){
+    char buffer[256];
+    bzero(buffer, 256);
+    int num_bytes_read = read(sync_socket, buffer, 256);
 
-  int socket_id;
-  char userid[MAXNAME];
-  char buffer[256];
+    if (num_bytes_read < 0){
+      printf("[check_sync_dir] ERROR reading from socket\n");
+      return ERRO;
+    }
 
-  /* Teste se todos os argumentos foram informados ao executar o cliente */
-  if (argc < 4) {
-    printf("Usage: client_id host port.\n");
-    exit(0);
-  }
+    if(strcmp (buffer, "exists") == 0){
+        /* Verifica se existe um diretório chamado sync_dir_userid */
+        bzero(buffer, 256);
 
-  /* Conecta ao servidor com o endereço e porta informados, retornando o socket_id */
-  socket_id = connect_server(argv[2], atoi(argv[3]));
-  if(socket_id < 0){
-    printf("Erro. Não foi possível conectar ao servidor.\n");
-    exit(0);
-  }
+        char folder_name[128];
+        bzero(folder_name, 128);
+        strcat(folder_name, "./sync_dir_");
+        strcat(folder_name, userid);
 
-  /* Userid informado pelo usuário */
-  strcpy (userid, argv[1]);
-
-  /* Se o usuário está OK, então pode executar ações */
-  if(auth(socket_id, userid) == 0){
-    char command[10];
-    char fileName[100];
-    char line[110];
-
-    //Atualiza pasta do usuário
-    strcpy(sync_dir, "sync_dir_");
-    strcat(sync_dir, userid);
-    printf("Seu diretório sincronizado é [%s]\n",sync_dir);
-    //Monta a lista inicial de arquivos do diretório
-    current_files = fn_create_from_path(sync_dir);
-    fn_print(current_files);
-
-    while(1){
-
-      bzero(line, 110);
-      bzero(buffer, 256);
-      bzero(command, 10);
-      bzero(fileName,100);
-
-      printf("\n\nDigite seu comando no formato: \nupload <filename.ext> \ndownload <filename.ext> \nlist \nget_sync_dir \nexit\n ");
-      scanf ("%[^\n]%*c", line);
-
-      int i=0;
-      char *p;
-      for (p = strtok(line," "); p != NULL; p = strtok(NULL, " ")){
-        if (i == 0){
-          strcpy(command, p);
+        if(existsFolder(folder_name) == 1){
+            strcat(buffer, "true");
         }
         else{
-          strcpy(fileName, p);
+            strcat(buffer, "false");
         }
-        i++;
-      }
 
-      /* Monta a linha de comando no formato: comando#nome_arquivo#conteudo_arquivo */
-      char* name = basename(fileName);
-      strcat(buffer, command);
-      strcat(buffer, "#");
-      strcat(buffer, name);
-      strcat(buffer, "#");
-
-      /* Realiza a operação solicitada */
-      if( strcmp("upload", command) == 0){
-        send_file(fileName, buffer, socket_id);
-      }
-      else if( strcmp("download", command) == 0){
-        /*TODO: fazer funcionar*/
-        get_file(fileName, buffer, socket_id);
-      }
-      else if( strcmp("list", command) == 0){
-        list(buffer, socket_id);
-      }
-      else if( strcmp("sync", command) == 0){
-        sync_client();
-      }
-      else if( strcmp("exit", command) == 0){
-        printf("Adeus! \n");
-        break;
-      }
-      else{
-        printf("Comando inválido.\n");
-      }
+        /* Envia resposta para o servidor.*/
+        int num_bytes_sent = write(sync_socket, buffer, 256);
+        if (num_bytes_sent < 0){
+            printf("[check_sync_dir] Erro ao escrever no socket.\n");
+            return ERRO;
+        }
+        return SUCESSO;
     }
+    else{
+        printf("[check_sync_dir] Erro: O comando enviado pelo servidor não foi reconhecido.\n");
+        return ERRO;
+    }
+}
+
+
+int main(int argc, char *argv[]){
+    int socket_id;
+
+    /* Testa se todos os argumentos foram informados ao executar o cliente */
+    if (argc < 4) {
+        printf("Usage: <client_id> <host> <port>.\n");
+		exit(0);
+    }
+
+    strcpy (userid, argv[1]);
+    strcpy(host, argv[2]);
+    port = atoi(argv[3]);
+
+    /* Conecta ao servidor com o endereço e porta informados, retornando o socket_id */
+    socket_id = connect_server(host, port);
+
+    if(socket_id < 0){
+        printf("Erro. Não foi possível conectar ao servidor.\n");
+		exit(0);
+    }
+
+    int user_auth = user_verification(socket_id, userid);
+    int sync_dir_checked = check_sync_dir();
+
+    /* Se o usuário está OK, então pode executar ações */
+    if(user_auth == SUCESSO && sync_dir_checked == SUCESSO){
+        char command[10];
+        char fileName[100];
+        char line[110];
+
+        //Atualiza pasta do usuário
+        strcpy(sync_dir, "sync_dir_");
+        strcat(sync_dir, userid);
+        printf("Seu diretório sincronizado é [%s]\n",sync_dir);
+        //Monta a lista inicial de arquivos do diretório
+        current_files = fn_create_from_path(sync_dir);
+        fn_print(current_files);
+        char buffer[256];
+
+        while(1){
+            bzero(line, 110);
+            bzero(buffer, 256);
+            bzero(command, 10);
+            bzero(fileName,100);
+
+            printf("\n\nDigite seu comando no formato: \nupload <filename.ext> \ndownload <filename.ext> \nlist \nget_sync_dir \nexit\n ");
+            scanf ("%[^\n]%*c", line);
+
+            int i=0;
+            char *p;
+            for (p = strtok(line," "); p != NULL; p = strtok(NULL, " ")){
+               if (i == 0){
+                  strcpy(command, p);
+               }
+               else{
+                  strcpy(fileName, p);
+               }
+               i++;
+            }
+
+            /* Monta a linha de comando no formato: comando#nome_arquivo#conteudo_arquivo */
+            char* name = basename(fileName);
+            strcat(buffer, command);
+            strcat(buffer, "#");
+            strcat(buffer, name);
+            strcat(buffer, "#");
+
+            /* Realiza a operação solicitada */
+            if( strcmp("upload", command) == 0){
+                send_file(fileName, buffer, socket_id);
+            }
+            else if( strcmp("download", command) == 0){
+                get_file(fileName, buffer, socket_id);
+            }
+            else if( strcmp("list", command) == 0){
+                list(buffer, socket_id);
+            }
+            else if( strcmp("sync", command) == 0){
+                sync_client();
+            }
+            else if( strcmp("exit", command) == 0){
+                printf("Adeus! \n");
+                break;
+            }
+            else{
+                printf("Comando inválido.\n");
+            }
+        }
   }
 
   /* Encerra a conexão com o servidor */
-  close_connection();
-
+  //close_connection();
   close(socket_id);
+  close(sync_socket);
+
   return 0;
 }

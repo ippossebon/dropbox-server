@@ -36,25 +36,57 @@ int existsSyncFolderClient(char* path){
 servidor. Toda vez que o comando get_sync_dir for executado, o servidor verificará se o diretório
 “sync_dir_<nomeusuário>” existe no dispositivo do cliente. Em caso afirmativo, nada deverá ser feito.
 Caso contrário, o diretório deverá ser criado e a sincronização ser efetuada pelo cliente */
-void get_sync_dir(char* client_id){
-	printf("Chegou no get_sync_dir com client_id: %s\n", client_id);
+void get_sync_dir(char* userid){
+	printf("Chegou no get_sync_dir com client_id: %s\n", userid);
 
 	char sync_name[255];
 	strcat(sync_name, "sync_dir_");
-	strcat(sync_name, client_id);
+	strcat(sync_name, userid);
 
-	/* O servidor deve verificar se existe uma pasta sync_dir_user no dispositivo
-	do cliente. */
-	if(existsSyncFolderClient(sync_name)){
-		/* Realiza a sincronização*/
-		printf("[sync_dir] Existe uma pasta %s no dispositivo do cliente.\n", sync_name);
-	}
-	else{
-		printf("[sync_dir] Não existe uma pasta %s no dispositivo do cliente. Criando... \n", sync_name);
+    /* Cria um novo socket, responsável pelas operações de sync entre o servidor
+    e o cliente. Através desse scoket, envia a mensagem #exists#userid para saber
+    se existe uma pasta sync_dir_userid no cliente. Em caso afirmativo, nada deverá
+    ser feito. Se a pasta não existir, o servidor deverá criá-la.
+    O cliente tem uma pasta sync_dir_userid por device, e a criação dessas pastas
+    é uma condição de corrida. */
 
-		/* TODO: Cria diretório sync_dir_user no dispositivo do cliente */
-		//mkdir(path, 0700); /* 0700 corresponde ao modo administrador */
-	}
+    // Cria um novo socket para a sincronização
+    int sync_socket = createSocket(PORT + 1);
+
+    if (sync_socket == ERRO){
+        printf("[get_sync_dir] Erro ao criar sync socket.\n");
+    }
+    char buffer[256];
+    strcat(buffer, "exists");
+
+    int num_bytes_sent;
+    int size = strlen(buffer);
+
+    /* Envia para o client os nomes dos arquivos */
+    num_bytes_sent = write(sync_socket, buffer, size);
+    if (num_bytes_sent < 0){
+        printf("[get_sync_dir] Erro ao escrever no socket\n");
+    }
+
+    /* Lê resposta do cliente. */
+    bzero(buffer, 256);
+    int num_bytes_read = read(sync_socket, buffer, 256);
+    if (num_bytes_read < 0){
+        printf("[get_sync_dir] ERROR reading from socket \n");
+    }
+
+    /* Não existe uma pasta sync_dir_userid no device. Portanto, deve criá-la.
+    Se existir, nada deve ser feito. */
+    if (strcmp(buffer, "false") == 0){
+        printf("[get_sync_dir] Não existe pasta sync_dir_user no device.\n");
+
+        /* Deve criar a pasta no diretório do cliente. */
+
+    }
+    else{
+        printf("[get_sync_dir] Existe pasta sync_dir_user no device.\n");
+    }
+    exit(0);
 }
 
 /* Recebe um arquivo file do cliente.
@@ -87,7 +119,7 @@ void send_file(char *file_name, int socket){
     int size = strlen(file_data);
 	n = write(socket, file_data, size);
 	if (n < 0){
-		printf("Erro ao escrever no socket - Download\n");
+		printf("[send_file] Erro ao escrever no socket\n");
 	}
 }
 
@@ -116,10 +148,11 @@ void list(int socket){
     int size = strlen(buffer);
 
     /* Envia para o client os nomes dos arquivos */
-    n = write(socket, buffer, size);
-    if (n < 0){
-        printf("Erro ao escrever no socket - Download\n");
-    }
+	n = write(socket, buffer, size);
+	if (n < 0){
+		printf("[list] Erro ao escrever no socket\n");
+	}
+
 }
 
 
@@ -243,6 +276,43 @@ void *client_thread(void *new_socket_id){
 	return 0;
 }
 
+int createSocket(int port){
+    int server_socket_id, new_socket_id;
+  	struct sockaddr_in server_address, client_address;
+	socklen_t client_len;
+	char buffer[256];
+
+    /* Cria socket TCP para o servidor. */
+	if ((server_socket_id = socket(AF_INET, SOCK_STREAM, 0)) == -1){
+		printf("[createSocket] ERROR opening socket\n");
+        return ERRO;
+	}
+
+	server_address.sin_family = AF_INET;
+	server_address.sin_port = htons(port);
+	server_address.sin_addr.s_addr = INADDR_ANY;
+	bzero(&(server_address.sin_zero), 8);
+
+	if (bind(server_socket_id, (struct sockaddr *) &server_address, sizeof(server_address)) < 0){
+		printf("[createSyncSocket] ERROR on binding\n");
+        return ERRO;
+	}
+
+    /* Informa que o socket em questões pode receber conexões, 5 indica o
+    tamanho da fila de mensagens */
+	listen(server_socket_id, 5);
+
+  	/* Aceita conexões de clientes */
+	client_len = sizeof(struct sockaddr_in);
+	if ((new_socket_id = accept(server_socket_id, (struct sockaddr *) &client_address, &client_len)) == -1){
+		printf("[createSyncSocket] ERROR on accept\n");
+	}
+
+	bzero(buffer, 256);
+
+    return new_socket_id;
+}
+
 int main(int argc, char *argv[]){
 	int server_socket_id, new_socket_id;
     struct sockaddr_in server_address, client_address;
@@ -297,9 +367,6 @@ int main(int argc, char *argv[]){
     /* Faz verificação de usuário. TODO: verificar se existe, se ja está logado, etc */
     user_verification(new_socket_id);
 
-
-	printf("voltou da autentificadcao de user.\n");
-
 	/* Após cada login do usuário, get_sync_dir deve ser chamado. */
 	get_sync_dir(username);
 
@@ -307,7 +374,6 @@ int main(int argc, char *argv[]){
     receive_command_client(new_socket_id);
 
 	close(new_socket_id);
->>>>>>> Adiciona lista de clientes e funções que lidam com essa lista.
 	close(server_socket_id);
 
 	clients_list = clearClientsList(clients_list);

@@ -15,4 +15,6 @@ void auth(int socket);
 void receive_command_client(int socket);
 void *client_thread(void *new_socket_id);
 
+int createSocket();
+
 #endif

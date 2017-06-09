@@ -4,6 +4,7 @@
 #define MAXNAME 32
 #define MAXFILES 256
 #define ERRO -1
+#define SUCESSO 1
 
 //Estrutura que vai armazenar informações de um arquivo
 typedef struct file_info {
@@ -35,10 +36,9 @@ typedef struct client_node{
 int writeFileToBuffer(char* filename, char* buffer);
 int writeBufferToFile(char* filename, char* buffer);
 char* getClientFolderName(char* client_id);
-int existsClientFolder(char* client_id);
+int existsFolder(char* path);
 void sendFileThroughSocket(char *file, char* buffer, int socket);
 void receiveFileThroughSocket(char *file, char* buffer, int socket);
-int existsFolder(char* path_folder);
 
 file_node* fn_create(); //Cria uma lista de arquivos vazia
 file_node* fn_create_from_path(char* path); //Cria uma lista a partir dos arquivos de um caminho indicado por path

@@ -61,12 +61,16 @@ char* getClientFolderName(char* client_id){
 }
 
 /* Retorna 0 se não existe o diretório em questão */
-int existsClientFolder(char* path){
-    if (stat(path, &st) == -1) {
-        return 0;
+int existsFolder(char* path){
+    DIR* dir = opendir(path);
+
+    if (dir)
+    { // Diretório existe.
+        closedir(dir);
+        return 1;
     }
     else{
-        return 1;
+        return 0;
     }
 }
 
