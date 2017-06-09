@@ -4,7 +4,7 @@ INC_DIR=./include/
 BIN_DIR=./bin/
 S_DIR=./server/
 C_DIR=./client/
-FLAGS= -g -Wall
+FLAGS= -pthread -g -Wall
 
 all: utilities server client
 
@@ -18,4 +18,4 @@ server: $(SRC_DIR)dropboxServer.c utilities
 	$(CC) -o $(S_DIR)dropboxServer $(SRC_DIR)dropboxServer.c $(BIN_DIR)dropboxUtil.o $(FLAGS)
 
 clean:
-	rm -rf $(LIB_DIR)/*.a *.o $(SRC_DIR)/*~ $(INC_DIR)/*~ *~
+	rm -rf $(BIN_DIR)*.o $(S_DIR)dropboxServer $(C_DIR)dropboxClient

@@ -7,9 +7,11 @@
 
 
 int connect_server(char *host, int port);
+void close_connection();
 void sync_client();
+void list(char* line, int socket);
 void send_file(char *file, char* buffer, int socket);
 void get_file(char *file, char* line, int socket);
-void close_connection();
+int auth(int socket, char* userid);
 
 #endif
