@@ -15,7 +15,6 @@
 /* Temos que conferir se não precisamos definir a porta de maneira mais dinâmica */
 #define PORT 4000
 
-
 char username[MAXNAME];
 client_node* clients_list;
 
@@ -158,13 +157,14 @@ void list(int socket){
 
 void auth(int socket){
     char buffer[256];
+    bzero(buffer, 256);
     int num_bytes_read, num_bytes_sent;
 
+    /* No buffer vem o userid do cliente que esta tentando conectar */
     num_bytes_read = read(socket, buffer, 256);
     if (num_bytes_read < 0){
         printf("[auth] ERROR reading from socket \n");
     }
-
 
     strcpy(username, buffer);
 
@@ -187,7 +187,7 @@ void auth(int socket){
 		new_client.logged_in = 1;
 
 		clients_list = addClientToList(clients_list, &new_client);
-		printf("Novo usuário adicionado à lista!\n");
+		printf("[auth] Novo usuário > adicionado à lista. Lista de clientes: \n");
 		printClientsList(clients_list);
 	}
 	else{
@@ -207,10 +207,10 @@ void auth(int socket){
 	bzero(buffer, 256);
 	num_bytes_sent = write(socket, "OK", 3);
 
-	printf("Mensagem de OK enviada ao cliente.\n");
 	if (num_bytes_sent < 0){
 		printf("[auth] ERROR writing on socket\n");
 	}
+    printf("Saindo da funcao de autentificacao\n");
 }
 
 void receive_command_client(int socket){
@@ -266,6 +266,9 @@ void *client_thread(void *new_socket_id){
 
 	/* Faz verificação de usuário. TODO: verificar se existe, se ja está logado, etc */
 	auth(socket_id);
+
+    /* Após cada login do usuário, get_sync_dir deve ser chamado. */
+    get_sync_dir(username);
 
 	/* Recebe a linha de comando e redireciona para a função objetivo */
 	receive_command_client(socket_id);
@@ -327,6 +330,7 @@ int main(int argc, char *argv[]){
     /* Cria socket TCP para o servidor. */
 	if ((server_socket_id = socket(AF_INET, SOCK_STREAM, 0)) == -1){
 		printf("[main] ERROR opening socket\n");
+        exit(1);
 	}
 
 	server_address.sin_family = AF_INET;
@@ -336,6 +340,7 @@ int main(int argc, char *argv[]){
 
 	if(bind(server_socket_id, (struct sockaddr *) &server_address, sizeof(server_address)) < 0){
 		printf("[main] ERROR on binding\n");
+        exit(1);
 	}
 
     /* Informa que o socket em questões pode receber conexões, 5 indica o
@@ -356,22 +361,14 @@ int main(int argc, char *argv[]){
     		if(pthread_create( &c_thread, NULL, client_thread, arg) != 0){
     			printf("[main] ERROR on thread creation.\n");
     			close(new_socket_id);
-    		}
-    		else{
-    			printf("[main] ERROR on accept.\n");
+                exit(1);
     		}
         }
+        else{
+            printf("[main] Erro no accept\n");
+            exit(1);
+        }
     }
-	bzero(buffer, 256);
-
-    /* Faz verificação de usuário. TODO: verificar se existe, se ja está logado, etc */
-    user_verification(new_socket_id);
-
-	/* Após cada login do usuário, get_sync_dir deve ser chamado. */
-	get_sync_dir(username);
-
-    /* Recebe a linha de comando e redireciona para a função objetivo */
-    receive_command_client(new_socket_id);
 
 	close(new_socket_id);
 	close(server_socket_id);

@@ -30,12 +30,12 @@ int connect_server(char *host, int port){
   /* Verifica se o servidor informado é válido */
   server = gethostbyname(host);
   if (server == NULL) {
-    printf("Erro. Endereço informado inválido.\n");
+    printf("[connect_server] Erro. Endereço informado inválido.\n");
     return ERRO;
   }
 
   if ((socket_id = socket(AF_INET, SOCK_STREAM, 0)) == -1){
-    printf("Erro ao iniciar o socket.\n");
+    printf("[connect_server] Erro ao iniciar o socket.\n");
     return ERRO;
   }
 
@@ -45,7 +45,7 @@ int connect_server(char *host, int port){
   bzero(&(server_address.sin_zero), 8);
 
   if (connect(socket_id,(struct sockaddr *) &server_address, sizeof(server_address)) < 0){
-    printf("Erro ao conectar.\n");
+    printf("[connect_server] Erro ao conectar.\n");
     return ERRO;
   }
 
@@ -142,30 +142,30 @@ void list(char* line, int socket){
 
 
 int auth(int socket, char* userid){
+  printf("Realizando verificação de usuário... \n\n");
 
   int num_bytes_sent, num_bytes_read;
   int buffer_size = strlen(userid);
-  char check[8];
-
-  printf("Realizando verificação de usuário... \n\n");
+  char buffer[256];
 
   num_bytes_sent = write(socket, userid, buffer_size);
+
   if (num_bytes_sent < 0){
     printf("[auth] ERROR writing on socket\n");
     exit(1);
   }
 
-  bzero(check, 8);
-  num_bytes_read = read(socket, check, 8);
+  bzero(buffer, 256);
+  num_bytes_read = read(socket, buffer, 256);
 
   if (num_bytes_read < 0){
     printf("[auth] ERROR reading on socket\n");
     exit(1);
   }
 
-  if(strcmp (check, "OK") == 0){
+  if(strcmp (buffer, "OK") == 0){
     printf("Usuário autenticado.\n");
-    return 0;
+    return 1;
   }
   else{
     printf("ERRO: Usuário não autenticado. Excesso de devices conectados.\n");
@@ -174,7 +174,12 @@ int auth(int socket, char* userid){
 }
 
 int check_sync_dir(){
-    sync_socket = connect_server(host, port+1);
+    int sync_port = port+1;
+    sync_socket = connect_server(host, sync_port);
+
+    if (sync_socket == ERRO){
+        return ERRO;
+    }
 
     char buffer[256];
     bzero(buffer, 256);
@@ -237,7 +242,7 @@ int main(int argc, char *argv[]){
 		exit(0);
     }
 
-    int user_auth = user_verification(socket_id, userid);
+    int user_auth = auth(socket_id, userid);
     int sync_dir_checked = check_sync_dir();
 
     /* Se o usuário está OK, então pode executar ações */

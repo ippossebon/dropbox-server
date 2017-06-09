@@ -14,7 +14,7 @@ void send_file(char *file_name, int socket);
 void auth(int socket);
 void receive_command_client(int socket);
 void *client_thread(void *new_socket_id);
-
+void get_sync_dir(char* userid);
 int createSocket();
 
 #endif
