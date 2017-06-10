@@ -268,7 +268,7 @@ void *client_thread(void *new_socket_id){
 	auth(socket_id);
 
     /* Após cada login do usuário, get_sync_dir deve ser chamado. */
-    get_sync_dir(username);
+    //get_sync_dir(username);
 
 	/* Recebe a linha de comando e redireciona para a função objetivo */
 	receive_command_client(socket_id);
