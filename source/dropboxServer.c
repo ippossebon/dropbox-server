@@ -24,18 +24,27 @@ void sync_client(int sync_socket, char* userid){
     char buffer[256];
     bzero(buffer, 256);
 
-    read(sync_socket, buffer, 256);
 
+    while(read(sync_socket, buffer, 256) != 0){
+        printf("%s\n", buffer);
+    }
+/*
     if (strcmp(buffer, "start client sync") == 0){
         printf("Client vai começar a sync\n");
         receive_command_client(sync_socket, userid);
     }
     else{
         printf("[sync_client] Erro ao receber comando de sync do client.\n");
+        int i = 0;
+        printf("\n\n\n");
+        for (i = 0; i < 256; i++){
+            printf("%c", buffer[i]);
+        }
+        printf("\n\n\n");
         printf("buffer = %s\n", buffer);
-
         exit(1);
     }
+    */
 }
 
 void sync_server(int sync_socket, char* userid){
@@ -397,11 +406,11 @@ void *sync_thread(void *userid){
         read(sync_socket, buffer, 256);
 
         if(strcmp(buffer, "start client sync") == 0){
-            bzero(buffer, 256);
+            printf("Leu >start client sync<\n");
             sync_client(sync_socket, userid);
         }
         else if (strcmp(buffer, "start server sync") == 0){
-            bzero(buffer, 256);
+            printf("Leu >start server sync<\n");;
             sync_server(sync_socket, userid);
         }
      }
