@@ -144,7 +144,6 @@ servidor. Toda vez que o comando get_sync_dir for executado, o servidor verifica
 “sync_dir_<nomeusuário>” existe no dispositivo do cliente. Em caso afirmativo, nada deverá ser feito.
 Caso contrário, o diretório deverá ser criado e a sincronização ser efetuada pelo cliente */
 int get_sync_dir(char* userid){
-	printf("Chegou no get_sync_dir com client_id: %s\n", userid);
 	char sync_name[255];
 	strcat(sync_name, "sync_dir_");
 	strcat(sync_name, userid);

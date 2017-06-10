@@ -309,7 +309,7 @@ int auth(int socket, char* userid){
   }
 }
 
-int check_sync_dir(){
+int get_sync_dir(){
     int sync_port = port+1;
     sync_socket = connect_server(host, sync_port);
 
@@ -322,7 +322,7 @@ int check_sync_dir(){
     int num_bytes_read = read(sync_socket, buffer, 256);
 
     if (num_bytes_read < 0){
-      printf("[check_sync_dir] ERROR reading from socket\n");
+      printf("[get_sync_dir] ERROR reading from socket\n");
       return ERRO;
     }
 
@@ -347,13 +347,13 @@ int check_sync_dir(){
         /* Envia resposta para o servidor.*/
         int num_bytes_sent = write(sync_socket, buffer, 256);
         if (num_bytes_sent < 0){
-            printf("[check_sync_dir] Erro ao escrever no socket.\n");
+            printf("[get_sync_dir] Erro ao escrever no socket.\n");
             return ERRO;
         }
         return SUCESSO;
     }
     else{
-        printf("[check_sync_dir] Erro: O comando enviado pelo servidor não foi reconhecido.\n");
+        printf("[get_sync_dir] Erro: O comando enviado pelo servidor não foi reconhecido.\n");
         return ERRO;
     }
 }
@@ -391,7 +391,7 @@ int main(int argc, char *argv[]){
     }
 
     int user_auth = auth(socket_id, userid);
-    int sync_dir_checked = check_sync_dir();
+    int sync_dir_checked = get_sync_dir();
 
     /* Se o usuário está OK, então pode executar ações */
     if(user_auth == SUCESSO && sync_dir_checked == SUCESSO){
@@ -416,7 +416,7 @@ int main(int argc, char *argv[]){
         fn_print(current_files);
         char buffer[256];
 
-        printf("\n\nDigite seu comando no formato: \nupload <filename.ext> \ndownload <filename.ext> \nlist \nget_sync_dir \nexit\n");
+        printf("\n\nDigite seu comando no formato: \nupload <filename.ext> \ndownload <filename.ext> \nlist \nsync \nexit\n");
         while(1){
 
             sync_client();
@@ -459,8 +459,8 @@ int main(int argc, char *argv[]){
             else if( strcmp("list", command) == 0){
                 list(buffer, socket_id);
             }
-            else if( strcmp("sync", command) == 0){
-                sync_client();
+            else if( strcmp("get_sync_dir", command) == 0){
+                get_sync_dir();
             }
             else if( strcmp("exit", command) == 0){
                 close_connection(buffer, socket_id);
