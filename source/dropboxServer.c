@@ -18,13 +18,13 @@
 client_node* clients_list;
 
 /* Recebe as modificações que foram feitas localmente pelo cliente */
-void sync_client(int sync_socket){
+void sync_client(int sync_socket, char* userid){
     char buffer[256];
     bzero(buffer, 256);
     read(sync_socket, buffer, 256);
 
     if (strcmp(buffer, "start client sync") == 0){
-        receive_command_client(sync_socket);
+        receive_command_client(sync_socket, userid);
     }
     else{
         printf("[sync_client] Erro ao receber comando de sync do client.\n");
@@ -69,7 +69,7 @@ void sync_server(int sync_socket, char* userid){
                 int buffer_size = strlen(buffer);
                 write(sync_socket, buffer, buffer_size);
 
-                send_file(node->data->name, sync_socket);
+                send_file(node->data->name, sync_socket, userid);
             }
         }else{ //Não encontrou o arquivo, então ele foi adicionado
             printf("O arquivo %s foi ADICIONADO às %s\n", node->data->name, node->data->last_modified);
@@ -81,7 +81,7 @@ void sync_server(int sync_socket, char* userid){
             int buffer_size = strlen(buffer);
             write(sync_socket, buffer, buffer_size);
 
-            send_file(node->data->name, sync_socket);
+            send_file(node->data->name, sync_socket, userid);
         }
     }
 
@@ -107,7 +107,7 @@ void sync_server(int sync_socket, char* userid){
                 int buffer_size = strlen(buffer);
                 write(sync_socket, buffer, buffer_size);
 
-                send_file(node->data->name, sync_socket);
+                send_file(node->data->name, sync_socket, userid);
             }
         }else{ //Não encontrou o arquivo, então ele foi deletado
             printf("O arquivo %s foi DELETADO.\n", node->data->name);
@@ -405,29 +405,29 @@ void *sync_thread(void *new_sync_socket){
 	/* Uns casts muito loucos */
 	int sync_socket = *((int *) new_sync_socket);
 
-  while(1){
+    while(1){
 
-  }
+    }
 
-  return 0;
+    return 0;
 }
 
 void *client_thread(void *new_socket_id){
 	/* Uns casts muito loucos */
 	int socket_id = *((int *) new_socket_id);
-  int sync_socket;
-  char userid[MAXNAME];
-  pthread_t s_thread;
+    int sync_socket;
+    char userid[MAXNAME];
+    pthread_t s_thread;
 
 	/* Faz verificação de usuário. TODO: verificar se existe, se ja está logado, etc */
 	auth(socket_id, userid);
 
-  /* Após cada login do usuário, get_sync_dir deve ser chamado. */
-  sync_socket = get_sync_dir(userid);
-  if(sync_socket == ERRO){
-    printf("[client_thread] Erro no get_sync_dir\n");
-    exit(1);
-  }
+    /* Após cada login do usuário, get_sync_dir deve ser chamado. */
+    sync_socket = get_sync_dir(userid);
+    if(sync_socket == ERRO){
+        printf("[client_thread] Erro no get_sync_dir\n");
+        exit(1);
+    }
 
   int *arg = malloc(sizeof(*arg));
   *arg = sync_socket;

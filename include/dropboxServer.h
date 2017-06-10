@@ -16,6 +16,7 @@ void auth(int socket, char* userid);
 void receive_command_client(int socket, char *userid);
 void *client_thread(void *new_socket_id);
 int get_sync_dir(char* userid);
+void sync_client(int sync_socket, char* userid);
 void sync_server(int sync_socket, char* userid);
 void *sync_thread(void *new_sync_socket);
 int createSocket();
