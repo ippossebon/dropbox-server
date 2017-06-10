@@ -123,12 +123,15 @@ void get_file(char *file, char* line, int socket){
 /* Sincroniza o diretório “sync_dir_<nomeusuário>” com
 o servidor */
 void sync_client(){
+
+  printf("Na sync_client\n");
   /* Informa ao server que vai sincronizar (avisa quais foram as modificações
   realizadas localmente)*/
   char buffer[256];
-  strcat(buffer, "start client sync");
+  strcpy(buffer, "start client sync");
   int buffer_size = strlen(buffer);
 
+  printf("Vai avisar o server que vai fazer a sincronizacao\n");
   write(sync_socket, buffer, buffer_size);
 
   /* Aqui estará a nova lista com os arquivos atuais/reais
@@ -137,6 +140,7 @@ void sync_client(){
 
   file_node* node;
 
+  printf("Comparando os arquivos NOVOS\n");
   /* Para cada arquivo "real/nova" bucamos na lista "antiga" se ele existe.
     Se encontrar: verifica se foi modificado. Se tiver sido modificado então = UPLOAD do arquivo.
     Se não encontrar: significa que esse arquivo foi adicionado = UPLOAD arquivo */
@@ -176,6 +180,8 @@ void sync_client(){
       send_file(node->data->name, send_file_buffer, sync_socket);
     }
   }
+
+  printf("Comparando os arquivos ANTIGOS\n");
 
   /* Para cada arquivo "antigo" bucamos na lista "real/nova" se ele existe.
     Se encontrar: acredito que a verificação de cima já está fazendo o que precisa ser feito, então não faria nada nesse caso.
@@ -219,10 +225,13 @@ void sync_client(){
   /* current_file agora aponta para a real_current_files */
   current_files = real_current_files;
 
+  printf("TERMINOU SYNC CLIENT\n");
   /* Avisa o servidor que terminou de fazer o seu sync. */
   bzero(buffer, 256);
   strcat(buffer, "end client sync");
   buffer_size = strlen(buffer);
+
+  printf("Vai escrever END SYNC CLIENT\n");
   write(sync_socket, buffer, buffer_size);
 }
 
@@ -302,70 +311,49 @@ int auth(int socket, char* userid){
     printf("Usuário autenticado.\n");
     return 1;
   }
-  else{
+  else if (strcmp(buffer, "NOT OK") == 0){
     printf("ERRO: Usuário não autenticado. Excesso de devices conectados.\n");
     return ERRO;
+  }
+  else{
+      printf("ERRO: Mensagem não reconhecida\n");
+      return ERRO;
   }
 }
 
 int check_sync_dir(){
-    int sync_port = port+1;
-    sync_socket = connect_server(host, sync_port);
+    /* Verifica se existe um diretório chamado sync_dir_userid, se não existir,
+    cria. */
+    char folder_name[128];
+    bzero(folder_name, 128);
+    strcat(folder_name, "./sync_dir_");
+    strcat(folder_name, userid);
 
-    if (sync_socket == ERRO){
-      return ERRO;
-    }
-
-    char buffer[256];
-    bzero(buffer, 256);
-    int num_bytes_read = read(sync_socket, buffer, 256);
-
-    if (num_bytes_read < 0){
-      printf("[check_sync_dir] ERROR reading from socket\n");
-      return ERRO;
-    }
-
-    if(strcmp (buffer, "exists") == 0){
-      /* Verifica se existe um diretório chamado sync_dir_userid */
-      bzero(buffer, 256);
-
-      char folder_name[128];
-      bzero(folder_name, 128);
-      strcat(folder_name, "./sync_dir_");
-      strcat(folder_name, userid);
-
-      if(existsFolder(folder_name) == 1){
-        strcat(buffer, "true");
-      }
-      else{
-        strcat(buffer, "false");
-        // Cria pasta
+    if(existsFolder(folder_name) != 1){
         mkdir(folder_name, 0700);
-      }
-
-      /* Envia resposta para o servidor.*/
-      int num_bytes_sent = write(sync_socket, buffer, 256);
-      if (num_bytes_sent < 0){
-        printf("[check_sync_dir] Erro ao escrever no socket.\n");
-        return ERRO;
-      }
-      return SUCESSO;
     }
-    else{
-      printf("[check_sync_dir] Erro: O comando enviado pelo servidor não foi reconhecido.\n");
-      return ERRO;
-    }
+    return SUCESSO;
 }
 
 
 void *sync_thread(void *unused){
-  while(1){
-    sync_client();
-    sleep(10);
-    sync_server();
-  }
+    printf(".............Na sync_thread....\n");
+    /* Conecta socket específico para sincronização.*/
+    int sync_port = port+1;
+    sync_socket = connect_server(host, sync_port);
 
-	return 0;
+    if (sync_socket == ERRO){
+      printf("Erro ao criar o socket de sincronização\n");
+      pthread_exit(NULL);
+    }
+
+
+    while(1){
+        sync_client();
+        sync_server();
+    }
+
+    return 0;
 }
 
 
@@ -416,7 +404,7 @@ int main(int argc, char *argv[]){
     fn_print(current_files);
     char buffer[256];
     printf("\n**************************************\n");
-    printf("    Digite seu comando no formato: \n\tupload <filename.ext> \n\tdownload <filename.ext> \n\tlist \n\tget_sync_dir \n\texit\n");
+    printf("    Digite seu comando no formato: \n\tupload <filename.ext> \n\tdownload <filename.ext> \n\tlist \n\texit\n");
     printf("**************************************\n");
     while(1){
 
@@ -457,9 +445,6 @@ int main(int argc, char *argv[]){
       }
       else if( strcmp("list", command) == 0){
         list(buffer, socket_id);
-      }
-      else if( strcmp("sync", command) == 0){
-        sync_client();
       }
       else if( strcmp("exit", command) == 0){
         close_connection(buffer, socket_id);

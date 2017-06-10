@@ -23,15 +23,17 @@ void sync_client(int sync_socket, char* userid){
 
     char buffer[256];
     bzero(buffer, 256);
+
     read(sync_socket, buffer, 256);
 
     if (strcmp(buffer, "start client sync") == 0){
         printf("Client vai começar a sync\n");
-
         receive_command_client(sync_socket, userid);
     }
     else{
         printf("[sync_client] Erro ao receber comando de sync do client.\n");
+        printf("buffer = %s\n", buffer);
+
         exit(1);
     }
 }
@@ -143,62 +145,6 @@ int existsSyncFolderClient(char* path){
     return 0;
 }
 
-/* O comando get_sync_dir é executado logo após o estabelecimento de uma conexão entre cliente e
-servidor. Toda vez que o comando get_sync_dir for executado, o servidor verificará se o diretório
-“sync_dir_<nomeusuário>” existe no dispositivo do cliente. Em caso afirmativo, nada deverá ser feito.
-Caso contrário, o diretório deverá ser criado e a sincronização ser efetuada pelo cliente */
-int get_sync_dir(char* userid){
-	char sync_name[255];
-	strcat(sync_name, "sync_dir_");
-	strcat(sync_name, userid);
-
-  /* Cria um novo socket, responsável pelas operações de sync entre o servidor
-  e o cliente. Através desse scoket, envia a mensagem #exists#userid para saber
-  se existe uma pasta sync_dir_userid no cliente. Em caso afirmativo, nada deverá
-  ser feito. Se a pasta não existir, o servidor deverá criá-la.
-  O cliente tem uma pasta sync_dir_userid por device, e a criação dessas pastas
-  é uma condição de corrida. */
-
-  // Cria um novo socket para a sincronização
-  int sync_socket = createSocket(PORT + 1);
-
-  if (sync_socket == ERRO){
-    printf("[get_sync_dir] Erro ao criar sync socket.\n");
-    return ERRO;
-  }
-  char buffer[256];
-  strcat(buffer, "exists");
-
-  int num_bytes_sent;
-  int size = strlen(buffer);
-
-  /* Envia para o client os nomes dos arquivos */
-  num_bytes_sent = write(sync_socket, buffer, size);
-  if (num_bytes_sent < 0){
-    printf("[get_sync_dir] Erro ao escrever no socket\n");
-    return ERRO;
-  }
-
-  /* Lê resposta do cliente. */
-  bzero(buffer, 256);
-  int num_bytes_read = read(sync_socket, buffer, 256);
-
-  if (num_bytes_read < 0){
-    printf("[get_sync_dir] ERROR reading from socket \n");
-  }
-
-    /* Não existe uma pasta sync_dir_userid no device. Portanto, deve criá-la.
-    Se existir, nada deve ser feito. */
-    if (strcmp(buffer, "false") == 0){
-      printf("O usuário não possuia uma pasta sync_dir neste device. Uma pasta sync_dir foicriada para ele.\n");
-    }
-    else{
-      printf("A pasta sync_dir do cliente foi localizada no device.\n");
-    }
-
-  return sync_socket;
-}
-
 /* Recebe um arquivo file do cliente.
 Deverá ser executada quando for realizar upload de um arquivo.
 file – path/filename.ext do arquivo a ser recebido */
@@ -279,16 +225,18 @@ void deleteLocalFile(char* file_name, char* userid){
   }
 }
 
-void auth(int socket, char* userid){
+int auth(int socket, char* userid){
   char buffer[256];
   bzero(buffer, 256);
 
   int num_bytes_read, num_bytes_sent;
 
-  /* No buffer vem o userid do cliente que esta tentando conectar */
+  /* No buffer vem o userid do cliente que esta tentando conectar.
+  Lê do socket: userid */
   num_bytes_read = read(socket, buffer, 256);
   if (num_bytes_read < 0){
     printf("[auth] ERROR reading from socket \n");
+    return ERRO;
   }
 
   strcpy(userid, buffer);
@@ -306,51 +254,60 @@ void auth(int socket, char* userid){
 		struct client new_client;
 		strcpy(new_client.userid, userid);
 
-    char dir_client[128];
-    bzero(dir_client, 128);
-    strcat(dir_client, "./client_folders/");
-    strcat(dir_client, new_client.userid);
+        char dir_client[128];
+        bzero(dir_client, 128);
+        strcat(dir_client, "./client_folders/");
+        strcat(dir_client, new_client.userid);
 
-    if(existsFolder(dir_client) == 0){
-      /* cria uma pasta para o usuário no server */
-      printf("[auth] Vai criar a pasta.\n");
-      char dir[100];
-      strcpy(dir, "mkdir ");
-      strcat(dir, dir_client);
-      system(dir);
-    }
+        if(existsFolder(dir_client) == 0){
+            /* cria uma pasta para o usuário no server */
+            printf("[auth] Vai criar a pasta.\n");
+            char dir[100];
+            strcpy(dir, "mkdir ");
+            strcat(dir, dir_client);
+            system(dir);
+        }
 
-    printf("[auth] Deve ter criado a pasta.\n");
-		/*TODO: como inicializar a variavel devices? */
-		new_client.devices[0] = 0;
+        printf("[auth] Deve ter criado a pasta.\n");
+
+        /* TODO: como inicializar a variavel devices? */
+        new_client.devices[0] = 1;
 		new_client.devices[1] = 0;
-    new_client.files = fn_create_from_path(dir_client);
+        new_client.files = fn_create_from_path(dir_client);
 		new_client.logged_in = 1;
 
 		clients_list = addClientToList(clients_list, &new_client);
 		printf("[auth] Novo usuário > adicionado à lista. Lista de clientes: \n");
-		printClientsList(clients_list);
+
+        printClientsList(clients_list);
 	}
 	else{
-		/* Se o cliente já está cadastrado no sistema, verifica o número de
+        /*TODO: SEÇÃO CRÍTICA*/
+
+        /* Se o cliente já está cadastrado no sistema, verifica o número de
 		dispositivos nos quais está logado. */
 		if (user->devices[0] == 1 && user->devices[1] == 1){
 			printf("ERRO: Este cliente já está logado em dois dispositivos diferentes.\n");
-			return;
+            num_bytes_sent = write(socket, "NOT OK", 7);
+			return ERRO;
 		}
-
-		/* TODO: Como registrar o device em que ele está cadastrado? */
+        else if (user->devices[0] == 0){
+            user->devices[0] = 1;
+        }
+        else if (user->devices[1] == 0){
+            user->devices[1] = 1;
+        }
 
 		printf("Usuário liberado.\n");
 	}
 
-	/* Envia mensagem de sucesso para o cliente. */
-	bzero(buffer, 256);
-	num_bytes_sent = write(socket, "OK", 3);
+    num_bytes_sent = write(socket, "OK", 3);
 
 	if (num_bytes_sent < 0){
 		printf("[auth] ERROR writing on socket\n");
+        return ERRO;
 	}
+    return SUCESSO;
 }
 
 void receive_command_client(int socket, char *userid){
@@ -360,19 +317,24 @@ void receive_command_client(int socket, char *userid){
   int num_bytes_read;
 
   while(1){
-    bzero(buffer, 256);
+        bzero(buffer, 256);
 	    char file_data[256];
 	    char *p;
 	    int i = 0;
 
-	    /* Recebe comando#filename#arquivo (se existirem) */
+	    /* Recebe
+        DOWNLOAD: download#filename
+        UPLOAD: upload#filename#conteudo_do_arquivo
+        LIST: list#
+        GET_SYNC_DIR: get_sync_dir#
+        EXIT: exit# */
 	    num_bytes_read = read(socket, buffer, 256);
 
 	    if (num_bytes_read < 0){
             printf("[receive_command_client] Erro ao ler linha de comando do socket.\n");
         }
 
-        printf("Server recebeu: %s\n", buffer);
+        printf("[receive_command_client] Server recebeu: %s\n", buffer);
 
 	    /* Separa o buffer de acordo com as informações necessárias, onde o delimitador é #.*/
 	    for (p = strtok(buffer,"#"); p != NULL; p = strtok(NULL, "#")){
@@ -389,26 +351,24 @@ void receive_command_client(int socket, char *userid){
         }
 
         /* Realizar a operação de acordo com o comando escolhido. */
-        if( strcmp("upload", command) == 0){
+        if(strcmp("upload", command) == 0){
             receive_file(file_name, file_data, userid);
         }
-        else if( strcmp("download", command) == 0){
+        else if(strcmp("download", command) == 0){
             send_file(file_name, socket, userid);
         }
-        else if( strcmp("list", command) == 0){
+        else if(strcmp("list", command) == 0){
             list(socket, userid);
         }
         else if (strcmp("delete", command) == 0){
             //deleteLocalFile(file_name);
         }
-        else if( strcmp("get_sync_dir", command) == 0){
-            //sync_server();
-        }
         else if(strcmp("end client sync", command) == 0){
+            /*TODO: Rever se é necessário*/
             /* Utilizada para sincronização do client */
             return;
         }
-        else if( strcmp("exit", command) == 0){
+        else if(strcmp("exit", command) == 0){
             return;
         }
   }
@@ -416,44 +376,65 @@ void receive_command_client(int socket, char *userid){
 
 
 void *sync_thread(void *userid){
-    int sync_socket;
+    // Cria um novo socket para a sincronização
+    int sync_socket = createSocket(PORT + 1);
 
-      sync_socket = get_sync_dir((char *) userid);
-      if(sync_socket == ERRO){
-        printf("[client_thread] Erro no get_sync_dir\n");
-        exit(1);
-      }
+    if(sync_socket == ERRO){
+        printf("[client_thread] Erro na criação do sync socket\n");
+        pthread_exit(NULL);
+    }
 
-      while(1){
-          sync_client(sync_socket, userid);
-          sleep(15);
-          sync_server(sync_socket, userid);
-      }
+    /*
+    A sincronização é feita em duas etapas:
+    1. sync_client: O cliente verifica todas as modificações realizadas localemente
+    e informa ao servidor quais são os arquivos que devem ser enviados ou apagados.
+    2. sync_server: O servidor faz o mesmo passo acima.
+    */
+    char buffer[256];
+    bzero(buffer, 256);
 
-      close(sync_socket);
-      return 0;
+     while(1){
+        read(sync_socket, buffer, 256);
+
+        if(strcmp(buffer, "start client sync") == 0){
+            bzero(buffer, 256);
+            sync_client(sync_socket, userid);
+        }
+        else if (strcmp(buffer, "start server sync") == 0){
+            bzero(buffer, 256);
+            sync_server(sync_socket, userid);
+        }
+     }
+
+     close(sync_socket);
+     return 0;
 }
 
 void *client_thread(void *new_socket_id){
 	/* Uns casts muito loucos */
 	int socket_id = *((int *) new_socket_id);
-  char userid[MAXNAME];
-  pthread_t s_thread;
+    char userid[MAXNAME];
+    pthread_t s_thread;
 
-	/* Faz verificação de usuário. TODO: verificar se existe, se ja está logado, etc */
-	auth(socket_id, userid);
+	/* Faz verificação de usuário, volta com o nome do cliente em userid */
+	if (auth(socket_id, userid) == ERRO){
+        close(socket_id);
+        free(new_socket_id);
+        printf("[client_thread] Erro ao autenticar o usuário\n");
+        pthread_exit(NULL);
+    }
 
-  /* Cria a thread de sincronização para aquele cliente */
-  if(pthread_create( &s_thread, NULL, sync_thread, (void *) userid) != 0){
-    printf("[main] ERROR on thread creation.\n");
-    exit(1);
-  }
+    /* Cria a thread de sincronização para aquele cliente */
+    if(pthread_create(&s_thread, NULL, sync_thread, (void *) userid) != 0){
+        printf("[client_thread] ERROR on thread creation.\n");
+        pthread_exit(NULL);
+    }
 
 	/* Recebe a linha de comando e redireciona para a função objetivo */
 	receive_command_client(socket_id, userid);
 
-  /* Mata a thread de sincronização */
-  pthread_cancel(s_thread);
+    /* Mata a thread de sincronização */
+    pthread_cancel(s_thread);
 
 	close(socket_id);
 	free(new_socket_id);
@@ -500,10 +481,11 @@ int createSocket(int port){
 
 int main(int argc, char *argv[]){
 	int server_socket_id, new_socket_id;
-  struct sockaddr_in server_address, client_address;
+    struct sockaddr_in server_address, client_address;
 	socklen_t client_len;
 
-    /* Talvez devêssemos alocar por malloc */
+    /* Talvez devêssemos alocar por malloc
+    TODO: rever */
 	pthread_t c_thread;
 
     /* Inicializa uma lista de clientes. */
@@ -512,7 +494,7 @@ int main(int argc, char *argv[]){
     /* Cria socket TCP para o servidor. */
 	if ((server_socket_id = socket(AF_INET, SOCK_STREAM, 0)) == -1){
 		printf("[main] ERROR opening socket\n");
-    exit(1);
+        exit(1);
 	}
 
 	server_address.sin_family = AF_INET;
@@ -522,11 +504,12 @@ int main(int argc, char *argv[]){
 
 	if(bind(server_socket_id, (struct sockaddr *) &server_address, sizeof(server_address)) < 0){
 		printf("[main] ERROR on binding\n");
-    exit(1);
+        exit(1);
 	}
 
     /* Informa que o socket em questões pode receber conexões, 5 indica o
     tamanho da fila de mensagens */
+    /*TODO: por que está aceitando mais do que 5 clientes?*/
 	listen(server_socket_id, 5);
 
 	client_len = sizeof(struct sockaddr_in);
@@ -539,12 +522,12 @@ int main(int argc, char *argv[]){
     	int *arg = malloc(sizeof(*arg));
     	*arg = new_socket_id;
 
-    	/* Se conectou, cria a thread para o cliente */
+    	/* Se conectou, cria a thread para o cliente, enviando o id do socket */
     	if(pthread_create( &c_thread, NULL, client_thread, arg) != 0){
     		printf("[main] ERROR on thread creation.\n");
     		close(new_socket_id);
-          exit(1);
-      }
+            exit(1);
+        }
     }
     else{
       printf("[main] Erro no accept\n");
