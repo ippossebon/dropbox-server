@@ -124,6 +124,7 @@ void send_file(char *file_name, int socket){
 
 /* Lista todos os arquivos contidos no diretório remoto do cliente. */
 void list(int socket){
+
     char* full_path = getClientFolderName(username);
     char buffer[256];
     bzero(buffer, 256);
@@ -218,45 +219,51 @@ void receive_command_client(int socket){
     char command[10];
     char file_name[32];
     int num_bytes_read;
-    bzero(buffer, 256);
 
-	char file_data[256];
-	char *p;
-	int i = 0;
+    while(1){
+        bzero(buffer, 256);
 
-	/* Recebe comando#filename#arquivo (se existirem) */
-	num_bytes_read = read(socket, buffer, 256);
+	    char file_data[256];
+	    char *p;
+	    int i = 0;
 
-	if (num_bytes_read < 0){
-        printf("[receive_command_client] Erro ao ler linha de comando do socket.\n");
-    }
+	    /* Recebe comando#filename#arquivo (se existirem) */
+	    num_bytes_read = read(socket, buffer, 256);
 
-	/* Separa o buffer de acordo com as informações necessárias, onde o delimitador é #.*/
-	for (p = strtok(buffer,"#"); p != NULL; p = strtok(NULL, "#")){
-	  if (i == 0){
-			strcpy(command, p);
-		}
-		else if (i == 1){
-			strcpy(file_name, p);
-		}
-		else{
-			strcpy(file_data, p);
-		}
-		i++;
-    }
+	    if (num_bytes_read < 0){
+            printf("[receive_command_client] Erro ao ler linha de comando do socket.\n");
+        }
 
-    /* Realizar a operação de acordo com o comando escolhido. */
-    if( strcmp("upload", command) == 0){
-        receive_file(file_name, file_data);
-    }
-    else if( strcmp("download", command) == 0){
-        send_file(file_name, socket);
-    }
-    else if( strcmp("list", command) == 0){
-        list(socket);
-    }
-    else if( strcmp("get_sync_dir", command) == 0){
-        //sync_client()
+	    /* Separa o buffer de acordo com as informações necessárias, onde o delimitador é #.*/
+	    for (p = strtok(buffer,"#"); p != NULL; p = strtok(NULL, "#")){
+	      if (i == 0){
+			    strcpy(command, p);
+		    }
+		    else if (i == 1){
+			    strcpy(file_name, p);
+		    }
+		    else{
+			    strcpy(file_data, p);
+		    }
+		    i++;
+        }
+
+        /* Realizar a operação de acordo com o comando escolhido. */
+        if( strcmp("upload", command) == 0){
+            receive_file(file_name, file_data);
+        }
+        else if( strcmp("download", command) == 0){
+            send_file(file_name, socket);
+        }
+        else if( strcmp("list", command) == 0){
+            list(socket);
+        }
+        else if( strcmp("get_sync_dir", command) == 0){
+            //sync_client()
+        }
+        else if( strcmp("exit", command) == 0){
+            return;
+        }
     }
 }
 
@@ -270,9 +277,10 @@ void *client_thread(void *new_socket_id){
     /* Após cada login do usuário, get_sync_dir deve ser chamado. */
     //get_sync_dir(username);
 
-	/* Recebe a linha de comando e redireciona para a função objetivo */
-	receive_command_client(socket_id);
 
+	/* Recebe a linha de comando e redireciona para a função objetivo */
+	receive_command_client(socket_id); 
+          
 	close(socket_id);
 	free(new_socket_id);
 

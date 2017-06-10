@@ -6,7 +6,7 @@
 #define ERRO -1
 
 int connect_server(char *host, int port);
-void close_connection();
+void close_connection(char* buffer, int socket);
 void sync_client();
 void list(char* line, int socket);
 void send_file(char *file, char* buffer, int socket);
