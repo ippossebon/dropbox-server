@@ -414,11 +414,10 @@ int main(int argc, char *argv[]){
     current_files = fn_create_from_path(sync_dir);
     fn_print(current_files);
     char buffer[256];
-
-    printf("\n\nDigite seu comando no formato: \nupload <filename.ext> \ndownload <filename.ext> \nlist \nget_sync_dir \nexit\n");
+    printf("\n**************************************\n");
+    printf("    Digite seu comando no formato: \n\tupload <filename.ext> \n\tdownload <filename.ext> \n\tlist \n\tget_sync_dir \n\texit\n");
+    printf("**************************************\n");
     while(1){
-
-      sync_client();
 
       bzero(line, 110);
       bzero(buffer, 256);
