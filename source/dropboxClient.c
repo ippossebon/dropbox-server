@@ -417,9 +417,7 @@ int main(int argc, char *argv[]){
 
     printf("\n\nDigite seu comando no formato: \nupload <filename.ext> \ndownload <filename.ext> \nlist \nget_sync_dir \nexit\n");
     while(1){
-
-      sync_client();
-
+	    
       bzero(line, 110);
       bzero(buffer, 256);
       bzero(command, 10);
