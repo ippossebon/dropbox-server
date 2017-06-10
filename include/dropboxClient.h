@@ -14,5 +14,6 @@ void get_file(char *file, char* line, int socket);
 int auth(int socket, char* userid);
 void close_connection();
 int check_sync_dir();
+void *sync_thread(void*);
 
 #endif

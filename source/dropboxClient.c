@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -15,6 +16,8 @@
 char host[128];
 int port;
 char userid[MAXNAME];
+/* Thread para a sincronização do cliente */
+pthread_t s_thread;
 
 file_node* current_files; //Lista de arquivos no diretório do compartilhado do usuário
 file_node* real_current_files;
@@ -57,7 +60,11 @@ int connect_server(char *host, int port){
 
 /* Fecha a conexão com o servidor */
 void close_connection(){
-    /* Avisar o servidor que o cliente está encerrando. */
+  /* Mata a thread de sincronização */
+  pthread_cancel(s_thread);
+
+  /* Avisar o servidor que o cliente está encerrando. */
+
 }
 
 
@@ -273,6 +280,16 @@ int check_sync_dir(){
 }
 
 
+void *sync_thread(void *unused){
+  while(1){
+    sync_client();
+    sleep(10);
+  }
+
+	return 0;
+}
+
+
 int main(int argc, char *argv[]){
     int socket_id;
 
@@ -300,6 +317,14 @@ int main(int argc, char *argv[]){
 
     /* Se o usuário está OK, então pode executar ações */
     if(user_auth == SUCESSO && sync_dir_checked == SUCESSO){
+
+      /* Cria a thread de sincronização */
+      if(pthread_create( &s_thread, NULL, sync_thread, NULL) != 0){
+        printf("[main] ERROR on thread creation.\n");
+        close(sync_socket);
+        exit(1);
+      }
+
         char command[10];
         char fileName[100];
         char line[110];
@@ -368,7 +393,7 @@ int main(int argc, char *argv[]){
   }
 
   /* Encerra a conexão com o servidor */
-  //close_connection();
+  close_connection();
   close(socket_id);
   close(sync_socket);
 
