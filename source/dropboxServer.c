@@ -304,15 +304,18 @@ void auth(int socket, char* userid){
 		strcpy(new_client.userid, userid);
 
     char dir_client[128];
+    bzero(dir_client, 128);
     strcat(dir_client, "./client_folders/");
     strcat(dir_client, new_client.userid);
 
     /* cria uma pasta para o usuário no server */
+    printf("[auth] Vai criar a pasta.\n");
     char dir[100];
-      strcpy(dir, "mkdir ");
-      strcat(dir, dir_client);
-      system(dir);
+    strcpy(dir, "mkdir ");
+    strcat(dir, dir_client);
+    system(dir);
 
+    printf("[auth] Deve ter criado a pasta.\n");
 		/*TODO: como inicializar a variavel devices? */
 		new_client.devices[0] = 0;
 		new_client.devices[1] = 0;
