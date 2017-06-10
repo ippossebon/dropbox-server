@@ -309,52 +309,52 @@ int auth(int socket, char* userid){
 }
 
 int check_sync_dir(){
-  int sync_port = port+1;
-  sync_socket = connect_server(host, sync_port);
+    int sync_port = port+1;
+    sync_socket = connect_server(host, sync_port);
 
-  if (sync_socket == ERRO){
-    return ERRO;
-  }
-
-  char buffer[256];
-  bzero(buffer, 256);
-  int num_bytes_read = read(sync_socket, buffer, 256);
-
-  if (num_bytes_read < 0){
-    printf("[check_sync_dir] ERROR reading from socket\n");
-    return ERRO;
-  }
-
-  if(strcmp (buffer, "exists") == 0){
-    /* Verifica se existe um diretório chamado sync_dir_userid */
-    bzero(buffer, 256);
-
-    char folder_name[128];
-    bzero(folder_name, 128);
-    strcat(folder_name, "./sync_dir_");
-    strcat(folder_name, userid);
-
-    if(existsFolder(folder_name) == 1){
-      strcat(buffer, "true");
-    }
-    else{
-      strcat(buffer, "false");
-      // Cria pasta
-      mkdir(folder_name, 0700);
-    }
-
-    /* Envia resposta para o servidor.*/
-    int num_bytes_sent = write(sync_socket, buffer, 256);
-    if (num_bytes_sent < 0){
-      printf("[check_sync_dir] Erro ao escrever no socket.\n");
+    if (sync_socket == ERRO){
       return ERRO;
     }
-    return SUCESSO;
-  }
-  else{
-    printf("[check_sync_dir] Erro: O comando enviado pelo servidor não foi reconhecido.\n");
-    return ERRO;
-  }
+
+    char buffer[256];
+    bzero(buffer, 256);
+    int num_bytes_read = read(sync_socket, buffer, 256);
+
+    if (num_bytes_read < 0){
+      printf("[check_sync_dir] ERROR reading from socket\n");
+      return ERRO;
+    }
+
+    if(strcmp (buffer, "exists") == 0){
+      /* Verifica se existe um diretório chamado sync_dir_userid */
+      bzero(buffer, 256);
+
+      char folder_name[128];
+      bzero(folder_name, 128);
+      strcat(folder_name, "./sync_dir_");
+      strcat(folder_name, userid);
+
+      if(existsFolder(folder_name) == 1){
+        strcat(buffer, "true");
+      }
+      else{
+        strcat(buffer, "false");
+        // Cria pasta
+        mkdir(folder_name, 0700);
+      }
+
+      /* Envia resposta para o servidor.*/
+      int num_bytes_sent = write(sync_socket, buffer, 256);
+      if (num_bytes_sent < 0){
+        printf("[check_sync_dir] Erro ao escrever no socket.\n");
+        return ERRO;
+      }
+      return SUCESSO;
+    }
+    else{
+      printf("[check_sync_dir] Erro: O comando enviado pelo servidor não foi reconhecido.\n");
+      return ERRO;
+    }
 }
 
 
@@ -362,6 +362,7 @@ void *sync_thread(void *unused){
   while(1){
     sync_client();
     sleep(10);
+    sync_server();
   }
 
 	return 0;
