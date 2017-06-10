@@ -9,6 +9,7 @@
 #include "../include/dropboxUtil.h"
 #include <errno.h>
 #include <libgen.h>
+#include <sys/stat.h>
 
 /* Globais */
 char host[128];
@@ -73,9 +74,7 @@ void close_connection(char* buffer, int socket){
 /* Sincroniza o diretório “sync_dir_<nomeusuário>” com
 o servidor */
 void sync_client(){
-
-
-    /* Aqui estará a nova lista com os arquivos atuais/reais 
+    /* Aqui estará a nova lista com os arquivos atuais/reais
         Vão em frente, troquem o nome... */
     real_current_files = fn_create_from_path(sync_dir);
 
@@ -87,13 +86,13 @@ void sync_client(){
     for (node = real_current_files; node !=NULL; node = node->next) {
         /* Retorna o file_info do nodo se encontrado, se não retorna NULL */
         file_info* old_file = fn_find(current_files, node->data->name);
-        
+
         if(old_file != NULL){ //encontrou o arquivo, verifica se foi modificado
             /* s1 < s2 = numero negativo, entao s2 foi atualizada */
             if(strcmp(old_file->last_modified, node->data->last_modified) < 0){
                 printf("O arquivo %s foi MODIFICADO às %s\n", node->data->name, node->data->last_modified);
             }
-        }else{ //Não encontrou o arquivo, então ele foi adicionado 
+        }else{ //Não encontrou o arquivo, então ele foi adicionado
             printf("O arquivo %s foi ADICIONADO às %s\n", node->data->name, node->data->last_modified);
         }
 
@@ -106,19 +105,19 @@ void sync_client(){
     for (node = current_files; node !=NULL; node = node->next) {
         /* Retorna o file_info do nodo se encontrado, se não retorna NULL */
         file_info* old_file = fn_find(real_current_files, node->data->name);
-        
+
         if(old_file != NULL){ //encontrou o arquivo, verifica se foi modificado
             /* s1 < s2 = numero negativo, entao s2 foi atualizada */
             /* Se encontrar: acredito que a verificação de cima já está fazendo o que precisa ser feito,
                         então não faria nada nesse caso. */
             if(strcmp(old_file->last_modified, node->data->last_modified) < 0){
-                printf("O arquivo %s foi MODIFICADO às %s\n", node->data->name, node->data->last_modified);          
+                printf("O arquivo %s foi MODIFICADO às %s\n", node->data->name, node->data->last_modified);
             }
         }else{ //Não encontrou o arquivo, então ele foi deletado
             printf("O arquivo %s foi DELETADO.\n", node->data->name);
         }
-        
-       
+
+
     }
 
     /* current_file agora aponta para a real_current_files */
@@ -263,6 +262,8 @@ int check_sync_dir(){
         }
         else{
             strcat(buffer, "false");
+            // Cria pasta
+            mkdir(folder_name, 0700);
         }
 
         /* Envia resposta para o servidor.*/
