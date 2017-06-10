@@ -24,7 +24,7 @@ typedef struct file_node {
 typedef struct client {
     int devices[2]; // associado aos dispositivos do usuário
 	char userid[MAXNAME]; //  id do usuário no servidor, que deverá ser único. Informado pela linha de comando.
-	struct file_info metadata[MAXFILES]; //metadados de cada arquivo que o cliente possui no servidor.
+	file_node* files;
     int logged_in; // cliente está logado ou não.
 } client;
 

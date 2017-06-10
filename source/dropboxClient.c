@@ -70,63 +70,6 @@ void close_connection(char* buffer, int socket){
 
 }
 
-
-/* Sincroniza o diretório “sync_dir_<nomeusuário>” com
-o servidor */
-void sync_client(){
-    /* Aqui estará a nova lista com os arquivos atuais/reais
-        Vão em frente, troquem o nome... */
-    real_current_files = fn_create_from_path(sync_dir);
-
-    file_node* node;
-
-    /* Para cada arquivo "real/nova" bucamos na lista "antiga" se ele existe.
-        Se encontrar: verifica se foi modificado. Se tiver sido modificado então = UPLOAD do arquivo.
-        Se não encontrar: significa que esse arquivo foi adicionado = UPLOAD arquivo */
-    for (node = real_current_files; node !=NULL; node = node->next) {
-        /* Retorna o file_info do nodo se encontrado, se não retorna NULL */
-        file_info* old_file = fn_find(current_files, node->data->name);
-
-        if(old_file != NULL){ //encontrou o arquivo, verifica se foi modificado
-            /* s1 < s2 = numero negativo, entao s2 foi atualizada */
-            if(strcmp(old_file->last_modified, node->data->last_modified) < 0){
-                printf("O arquivo %s foi MODIFICADO às %s\n", node->data->name, node->data->last_modified);
-            }
-        }else{ //Não encontrou o arquivo, então ele foi adicionado
-            printf("O arquivo %s foi ADICIONADO às %s\n", node->data->name, node->data->last_modified);
-        }
-
-    }
-
-    /* Para cada arquivo "antigo" bucamos na lista "real/nova" se ele existe.
-        Se encontrar: acredito que a verificação de cima já está fazendo o que precisa ser feito,
-                        então não faria nada nesse caso.
-        Se não encontrar: significa que esse arquivo foi deletado = DELETE arquivo */
-    for (node = current_files; node !=NULL; node = node->next) {
-        /* Retorna o file_info do nodo se encontrado, se não retorna NULL */
-        file_info* old_file = fn_find(real_current_files, node->data->name);
-
-        if(old_file != NULL){ //encontrou o arquivo, verifica se foi modificado
-            /* s1 < s2 = numero negativo, entao s2 foi atualizada */
-            /* Se encontrar: acredito que a verificação de cima já está fazendo o que precisa ser feito,
-                        então não faria nada nesse caso. */
-            if(strcmp(old_file->last_modified, node->data->last_modified) < 0){
-                printf("O arquivo %s foi MODIFICADO às %s\n", node->data->name, node->data->last_modified);
-            }
-        }else{ //Não encontrou o arquivo, então ele foi deletado
-            printf("O arquivo %s foi DELETADO.\n", node->data->name);
-        }
-
-
-    }
-
-    /* current_file agora aponta para a real_current_files */
-    current_files = real_current_files;
-   /* TODO: duvida: da um free em alguem? no current_files? */
-
-}
-
-
 /* Envia um arquivo file para o servidor. Deverá ser
 executada quando for realizar upload de um arquivo.
 file – path/filename.ext do arquivo a ser enviado
@@ -172,6 +115,138 @@ void get_file(char *file, char* line, int socket){
   }
 
   writeBufferToFile(file, buffer);
+}
+
+/* Sincroniza o diretório “sync_dir_<nomeusuário>” com
+o servidor */
+void sync_client(){
+    /* Informa ao server que vai sincronizar (avisa quais foram as modificações
+    realizadas localmente)*/
+    char buffer[256];
+    strcat(buffer, "start client sync");
+    int buffer_size = strlen(buffer);
+
+    write(sync_socket, buffer, buffer_size);
+
+    /* Aqui estará a nova lista com os arquivos atuais/reais
+        Vão em frente, troquem o nome... */
+    real_current_files = fn_create_from_path(sync_dir);
+
+    file_node* node;
+
+    /* Para cada arquivo "real/nova" bucamos na lista "antiga" se ele existe.
+        Se encontrar: verifica se foi modificado. Se tiver sido modificado então = UPLOAD do arquivo.
+        Se não encontrar: significa que esse arquivo foi adicionado = UPLOAD arquivo */
+    for (node = real_current_files; node !=NULL; node = node->next) {
+        /* Retorna o file_info do nodo se encontrado, se não retorna NULL */
+        file_info* old_file = fn_find(current_files, node->data->name);
+
+        if(old_file != NULL){ //encontrou o arquivo, verifica se foi modificado
+            /* s1 < s2 = numero negativo, entao s2 foi atualizada */
+            if(strcmp(old_file->last_modified, node->data->last_modified) < 0){
+                printf("O arquivo %s foi MODIFICADO às %s\n", node->data->name, node->data->last_modified);
+
+                /* Deve enviar o arquivo para o servidor. Análogo a uma operação
+                UPLOAD.*/
+                bzero(buffer, 256);
+                strcat(buffer, "upload");
+                int buffer_size = strlen(buffer);
+                write(sync_socket, buffer, buffer_size);
+
+                char send_file_buffer[256];
+                bzero(send_file_buffer, 256);
+                send_file(node->data->name, send_file_buffer, sync_socket);
+            }
+        }else{ //Não encontrou o arquivo, então ele foi adicionado
+            printf("O arquivo %s foi ADICIONADO às %s\n", node->data->name, node->data->last_modified);
+
+            /* Deve enviar o arquivo para o servidor. Análogo a uma operação
+            UPLOAD.*/
+            bzero(buffer, 256);
+            strcat(buffer, "upload");
+            int buffer_size = strlen(buffer);
+            write(sync_socket, buffer, buffer_size);
+
+            char send_file_buffer[256];
+            bzero(send_file_buffer, 256);
+            send_file(node->data->name, send_file_buffer, sync_socket);
+        }
+
+    }
+
+    /* Para cada arquivo "antigo" bucamos na lista "real/nova" se ele existe.
+        Se encontrar: acredito que a verificação de cima já está fazendo o que precisa ser feito,
+                        então não faria nada nesse caso.
+        Se não encontrar: significa que esse arquivo foi deletado = DELETE arquivo */
+    for (node = current_files; node !=NULL; node = node->next) {
+        /* Retorna o file_info do nodo se encontrado, se não retorna NULL */
+        file_info* old_file = fn_find(real_current_files, node->data->name);
+
+        if(old_file != NULL){ //encontrou o arquivo, verifica se foi modificado
+            /* s1 < s2 = numero negativo, entao s2 foi atualizada */
+            /* Se encontrar: acredito que a verificação de cima já está fazendo o que precisa ser feito,
+                        então não faria nada nesse caso. */
+            if(strcmp(old_file->last_modified, node->data->last_modified) < 0){
+                printf("O arquivo %s foi MODIFICADO às %s\n", node->data->name, node->data->last_modified);
+
+                /* Deve enviar o arquivo para o servidor. Análogo a uma operação
+                UPLOAD.*/
+                bzero(buffer, 256);
+                strcat(buffer, "upload");
+                int buffer_size = strlen(buffer);
+                write(sync_socket, buffer, buffer_size);
+
+                char send_file_buffer[256];
+                bzero(send_file_buffer, 256);
+                send_file(node->data->name, send_file_buffer, sync_socket);
+
+            }
+        }else{ //Não encontrou o arquivo, então ele foi deletado
+            printf("O arquivo %s foi DELETADO.\n", node->data->name);
+
+            /* Deve pedir para o servidor apagar o arquivo */
+            bzero(buffer, 256);
+            strcat(buffer, "delete#");
+            strcat(buffer, node->data->name);
+            buffer_size = strlen(buffer);
+            write(sync_socket, buffer, buffer_size);
+        }
+    }
+
+    fn_clear(current_files);
+    /* current_file agora aponta para a real_current_files */
+    current_files = real_current_files;
+
+   /* Avisa o servidor que terminou de fazer o seu sync. */
+   bzero(buffer, 256);
+   strcat(buffer, "end client sync");
+   buffer_size = strlen(buffer);
+   write(sync_socket, buffer, buffer_size);
+}
+
+/* Recebe as modificações que foram feitas localmente pelo server */
+void sync_server(){
+    char buffer[256];
+    bzero(buffer, 256);
+    read(sync_socket, buffer, 256);
+
+    if (strcmp(buffer, "start server sync") == 0){
+/*
+        if( strcmp("upload", command) == 0){
+            send_file(fileName, buffer, socket_id);
+        }
+        else if( strcmp("download", command) == 0){
+            get_file(fileName, buffer, socket_id);
+        }
+        else if( strcmp("end server sync", command) == 0){
+            break;
+        }
+        */
+    }
+    else{
+        printf("[sync_client] Erro ao receber comando de sync do client.\n");
+        exit(1);
+    }
 }
 
 void list(char* line, int socket){
@@ -303,8 +378,7 @@ int main(int argc, char *argv[]){
     }
 
     int user_auth = auth(socket_id, userid);
-    //int sync_dir_checked = check_sync_dir();
-    int sync_dir_checked = SUCESSO;
+    int sync_dir_checked = check_sync_dir();
 
     /* Se o usuário está OK, então pode executar ações */
     if(user_auth == SUCESSO && sync_dir_checked == SUCESSO){
