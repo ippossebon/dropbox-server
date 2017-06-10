@@ -58,18 +58,22 @@ int connect_server(char *host, int port){
 }
 
 
-/* Fecha a conexão com o servidor */
-void close_connection(){
+/* Avisar o servidor que o cliente está encerrando. */
+void close_connection(char* buffer, int socket){
   /* Mata a thread de sincronização */
   pthread_cancel(s_thread);
 
-  /* Avisar o servidor que o cliente está encerrando. */
+  /* Envia conteúdo do buffer pelo socket */
+  int num_bytes_sent;
+  int buffer_size = strlen(buffer);
+  num_bytes_sent = write(socket, buffer, buffer_size);
 
+  if (num_bytes_sent < 0){
+      printf("ERROR writing to socket\n");
+  }
 }
 
-
-/* Sincroniza o diretório “sync_dir_<nomeusuário>” com
-o servidor */
+/* Sincroniza o diretório “sync_dir_<nomeusuário>” com o servidor */
 void sync_client(){
     /* Aqui estará a nova lista com os arquivos atuais/reais
         Vão em frente, troquem o nome... */
@@ -105,6 +109,8 @@ void sync_client(){
 
         if(old_file != NULL){ //encontrou o arquivo, verifica se foi modificado
             /* s1 < s2 = numero negativo, entao s2 foi atualizada */
+            /* Se encontrar: acredito que a verificação de cima já está fazendo o que precisa ser feito,
+                        então não faria nada nesse caso. */
             if(strcmp(old_file->last_modified, node->data->last_modified) < 0){
                 printf("O arquivo %s foi MODIFICADO às %s\n", node->data->name, node->data->last_modified);
             }
@@ -117,7 +123,7 @@ void sync_client(){
 
     /* current_file agora aponta para a real_current_files */
     current_files = real_current_files;
-   /* TODO: duvida: da um free em alguem? */
+   /* TODO: duvida: da um free em alguem? no current_files? */
 
 }
 
@@ -143,15 +149,11 @@ void send_file(char *file, char* buffer, int socket){
   if (num_bytes_sent < 0){
     printf("ERROR writing to socket\n");
   }
-
-  //printf("[send_file] file: %s - buffer: %s\n", file, buffer );
-  //sendFileThroughSocket(file, buffer, socket);
 }
 
 
 /* Obtém um arquivo file do servidor.
-Deverá ser executada quando for realizar download
-de um arquivo.
+Deverá ser executada quando for realizar download de um arquivo.
 file –filename.ext
 DOWNLOAD */
 void get_file(char *file, char* line, int socket){
@@ -338,6 +340,7 @@ int main(int argc, char *argv[]){
         fn_print(current_files);
         char buffer[256];
 
+        printf("\n\nDigite seu comando no formato: \nupload <filename.ext> \ndownload <filename.ext> \nlist \nget_sync_dir \nexit\n");
         while(1){
 
             sync_client();
@@ -347,8 +350,9 @@ int main(int argc, char *argv[]){
             bzero(command, 10);
             bzero(fileName,100);
 
-            printf("\n\nDigite seu comando no formato: \nupload <filename.ext> \ndownload <filename.ext> \nlist \nget_sync_dir \nexit\n ");
-            scanf ("%[^\n]%*c", line);
+            printf("\n\e[33m%s@dropbox> \e[39m", userid);
+            fgets(line, 256,stdin);
+            line[strlen(line) - 1] = '\0';
 
             int i=0;
             char *p;
@@ -383,7 +387,7 @@ int main(int argc, char *argv[]){
                 sync_client();
             }
             else if( strcmp("exit", command) == 0){
-                printf("Adeus! \n");
+                close_connection(buffer, socket_id);
                 break;
             }
             else{
@@ -392,8 +396,7 @@ int main(int argc, char *argv[]){
         }
   }
 
-  /* Encerra a conexão com o servidor */
-  close_connection();
+  /* Encerra os sockets */
   close(socket_id);
   close(sync_socket);
 

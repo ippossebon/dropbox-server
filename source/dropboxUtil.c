@@ -50,10 +50,10 @@ int writeBufferToFile(char* filename, char* buffer){
 }
 
 char* getClientFolderName(char* client_id){
-    char* path = "../server/client_folders/";
-    char* full_path = malloc(sizeof(path) + (sizeof(char) * MAXNAME));
 
-    strcat(full_path, path);
+    char* full_path = malloc(sizeof(char) * MAXNAME * 3);
+
+    strcpy(full_path, "../server/client_folders/");  
     strcat(full_path, client_id);
     strcat(full_path, "/");
 
