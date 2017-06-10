@@ -12,7 +12,8 @@ void list(char* line, int socket);
 void send_file(char *file, char* buffer, int socket);
 void get_file(char *file, char* line, int socket);
 int auth(int socket, char* userid);
-void close_connection();
+void close_connection(char* buffer, int socket);
 int check_sync_dir();
+void *sync_thread(void*);
 
 #endif
