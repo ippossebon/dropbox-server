@@ -183,15 +183,6 @@ int get_sync_dir(char* userid){
         printf("[get_sync_dir] ERROR reading from socket \n");
     }
 
-    /* Não existe uma pasta sync_dir_userid no device. Portanto, deve criá-la.
-    Se existir, nada deve ser feito. */
-    if (strcmp(buffer, "false") == 0){
-        printf("O usuário não possuia uma pasta sync_dir neste device. Uma pasta sync_dir foicriada para ele.\n");
-    }
-    else{
-        printf("A pasta sync_dir do cliente foi localizada no device.\n");
-    }
-
     return sync_socket;
 }
 
@@ -336,7 +327,6 @@ void auth(int socket, char* userid){
 	if (num_bytes_sent < 0){
 		printf("[auth] ERROR writing on socket\n");
 	}
-    printf("Saindo da funcao de autentificacao\n");
 }
 
 void receive_command_client(int socket, char *userid){
@@ -405,7 +395,9 @@ void *sync_thread(void *new_sync_socket){
 	int sync_socket = *((int *) new_sync_socket);
 
     while(1){
-
+        sync_client(sync_socket);
+        sleep(10);
+        sync_server();
     }
 
     return 0;

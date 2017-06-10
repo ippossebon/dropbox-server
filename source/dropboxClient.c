@@ -363,6 +363,7 @@ void *sync_thread(void *unused){
   while(1){
     sync_client();
     sleep(10);
+    sync_server();
   }
 
 	return 0;
@@ -416,7 +417,7 @@ int main(int argc, char *argv[]){
         fn_print(current_files);
         char buffer[256];
 
-        printf("\n\nDigite seu comando no formato: \nupload <filename.ext> \ndownload <filename.ext> \nlist \nsync \nexit\n");
+        printf("\n\nDigite seu comando no formato: \nupload <filename.ext> \ndownload <filename.ext> \nlist \nget_sync_dir \nexit\n");
         while(1){
 
             sync_client();
