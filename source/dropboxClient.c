@@ -314,8 +314,7 @@ int main(int argc, char *argv[]){
     }
 
     int user_auth = auth(socket_id, userid);
-    //int sync_dir_checked = check_sync_dir();
-    int sync_dir_checked = SUCESSO;
+    int sync_dir_checked = check_sync_dir();
 
     /* Se o usuário está OK, então pode executar ações */
     if(user_auth == SUCESSO && sync_dir_checked == SUCESSO){
