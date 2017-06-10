@@ -9,6 +9,7 @@
 #include "../include/dropboxUtil.h"
 #include <errno.h>
 #include <libgen.h>
+#include <sys/stat.h>
 
 /* Globais */
 char host[128];
@@ -204,6 +205,8 @@ int check_sync_dir(){
         }
         else{
             strcat(buffer, "false");
+            // Cria pasta
+            mkdir(folder_name, 0700);
         }
 
         /* Envia resposta para o servidor.*/
