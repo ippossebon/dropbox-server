@@ -346,14 +346,12 @@ void receive_command_client(int socket, char *userid){
 }
 
 
-void *sync_thread(void *userid){
-    // Cria um novo socket para a sincronização
-    int sync_socket = createSocket(PORT + 1);
-
-    if(sync_socket == ERRO){
-        printf("[client_thread] Erro na criação do sync socket\n");
-        pthread_exit(NULL);
-    }
+void *sync_thread(void *args_sync){
+    /* Uns casts muito loucos */
+    arg_struct_sync *args = args_sync;
+    int sync_socket = args->sync_socket;
+    char userid[MAXNAME];
+    strcpy(userid, args->userid);
 
     /*
     A sincronização é feita em duas etapas:
@@ -372,27 +370,33 @@ void *sync_thread(void *userid){
             sync_server(sync_socket, userid);
         }
      }
-
-     close(sync_socket);
      return 0;
 }
 
-void *client_thread(void *new_socket_id){
+void *client_thread(void *new_sockets){
 	/* Uns casts muito loucos */
-	int socket_id = *((int *) new_socket_id);
+    arg_struct *args = new_sockets;
+	int socket_id = args->socket_id;
+    int sync_socket = args->sync_socket;
     char userid[MAXNAME];
     pthread_t s_thread;
 
 	/* Faz verificação de usuário, volta com o nome do cliente em userid */
 	if (auth(socket_id, userid) == ERRO){
         close(socket_id);
-        free(new_socket_id);
+        close(sync_socket);
+        free(new_sockets);
         printf("[client_thread] Erro ao autenticar o usuário\n");
         pthread_exit(NULL);
     }
 
+    /* Aloca dinamicamente para armazenar o número do socket e passar para a thread de sync */
+    arg_struct_sync *args_sync = malloc(sizeof(arg_struct_sync *));
+    args_sync->sync_socket = sync_socket;
+    strcpy(args_sync->userid, userid);
+
     /* Cria a thread de sincronização para aquele cliente */
-    if(pthread_create(&s_thread, NULL, sync_thread, (void *) userid) != 0){
+    if(pthread_create(&s_thread, NULL, sync_thread, (void *) args_sync) != 0){
         printf("[client_thread] ERROR on thread creation.\n");
         pthread_exit(NULL);
     }
@@ -404,51 +408,16 @@ void *client_thread(void *new_socket_id){
     pthread_cancel(s_thread);
 
 	close(socket_id);
-	free(new_socket_id);
+    close(sync_socket);
+    free(new_sockets);
 
 	return 0;
 }
 
-int createSocket(int port){
-  int server_socket_id, new_socket_id;
-	struct sockaddr_in server_address, client_address;
-	socklen_t client_len;
-	char buffer[256];
-
-  /* Cria socket TCP para o servidor. */
-	if ((server_socket_id = socket(AF_INET, SOCK_STREAM, 0)) == -1){
-		printf("[createSocket] ERROR opening socket\n");
-    return ERRO;
-	}
-
-	server_address.sin_family = AF_INET;
-	server_address.sin_port = htons(port);
-	server_address.sin_addr.s_addr = INADDR_ANY;
-	bzero(&(server_address.sin_zero), 8);
-
-	if (bind(server_socket_id, (struct sockaddr *) &server_address, sizeof(server_address)) < 0){
-		printf("[createSyncSocket] ERROR on binding\n");
-    return ERRO;
-	}
-
-	listen(server_socket_id, 5);
-
-
-  /* Aceita conexões de clientes */
-	client_len = sizeof(struct sockaddr_in);
-	if ((new_socket_id = accept(server_socket_id, (struct sockaddr *) &client_address, &client_len)) == -1){
-		printf("[createSyncSocket] ERROR on accept\n");
-	}
-
-	bzero(buffer, 256);
-
-
-  return new_socket_id;
-}
 
 int main(int argc, char *argv[]){
-	int server_socket_id, new_socket_id;
-    struct sockaddr_in server_address, client_address;
+	int server_socket_id, new_socket_id, sync_socket, new_sync_socket;
+    struct sockaddr_in server_address, client_address, server_sync_address, client_sync_address;
 	socklen_t client_len;
 
     /* Talvez devêssemos alocar por malloc
@@ -477,34 +446,64 @@ int main(int argc, char *argv[]){
     /* Informa que o socket em questões pode receber conexões, 5 indica o
     tamanho da fila de mensagens */
     /*TODO: por que está aceitando mais do que 5 clientes?*/
-	listen(server_socket_id, 1);
+	listen(server_socket_id, 5);
 
 	client_len = sizeof(struct sockaddr_in);
 
 	/* Laço que fica aguardando conexões de clientes e criandos as threads*/
 	while(1){
-	    /* Aguarda a conexão do cliente */
+	    /* Aguarda a conexão do cliente no socket principal */
 		if((new_socket_id = accept(server_socket_id, (struct sockaddr *) &client_address, &client_len)) != ERRO){
-    	/* Aloca dinamicamente para armazenar o número do socket e passar para a thread */
-    	int *arg = malloc(sizeof(*arg));
-    	*arg = new_socket_id;
 
-    	/* Se conectou, cria a thread para o cliente, enviando o id do socket */
-    	if(pthread_create( &c_thread, NULL, client_thread, arg) != 0){
-    		printf("[main] ERROR on thread creation.\n");
-    		close(new_socket_id);
+            /* Cria socket TCP para o sync do servidor. */
+            if ((sync_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1){
+                printf("[main] ERROR opening sync socket\n");
+                exit(1);
+            }
+
+            server_sync_address.sin_family = AF_INET;
+            server_sync_address.sin_port = htons(PORT+1);
+            server_sync_address.sin_addr.s_addr = INADDR_ANY;
+            bzero(&(server_sync_address.sin_zero), 8);
+
+            if(bind(sync_socket, (struct sockaddr *) &server_sync_address, sizeof(server_sync_address)) < 0){
+                printf("[main] ERROR on sync binding\n");
+                exit(1);
+            }
+
+            listen(sync_socket, 5);
+
+            /* Aguarda a conexão do cliente no socket de sincronização */
+            if((new_sync_socket = accept(sync_socket, (struct sockaddr *) &client_sync_address, &client_len)) != ERRO){
+
+                /* Aloca dinamicamente para armazenar o número do socket e passar para a thread */
+                arg_struct *args = malloc(sizeof(arg_struct *));
+                args->socket_id = new_socket_id;
+                args->sync_socket = new_sync_socket;
+
+            	/* Se conectou, cria a thread para o cliente, enviando o id do socket */
+            	if(pthread_create( &c_thread, NULL, client_thread, (void *)args) != 0){
+            		printf("[main] ERROR on thread creation.\n");
+            		close(new_socket_id);
+                    close(new_sync_socket);
+                    exit(1);
+                }
+            }
+            else{
+                printf("[main] Erro no accept do sync\n");
+                close(sync_socket);
+                close(new_sync_socket);
+                exit(1);
+            }
+        }
+        else{
+            printf("[main] Erro no accept\n");
+            close(new_socket_id);
             exit(1);
         }
     }
-    else{
-      printf("[main] Erro no accept\n");
-      exit(1);
-    }
-  }
 
-	close(new_socket_id);
 	close(server_socket_id);
-
 	clients_list = clearClientsList(clients_list);
 
 	return 0;

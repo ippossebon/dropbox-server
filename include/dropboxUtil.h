@@ -34,6 +34,18 @@ typedef struct client_node{
     struct client_node* next;
 } client_node;
 
+/* Estrutura para armazenar os sockets a serem passados pra thread */
+typedef struct arg_struct {
+    int socket_id;
+    int sync_socket;
+} arg_struct;
+
+/* Estrutura para armazenar os sockets a serem passados pra thread de sync*/
+typedef struct arg_struct_sync {
+    int sync_socket;
+    char userid[MAXNAME];
+} arg_struct_sync;
+
 int writeFileToBuffer(char* filename, char* buffer);
 int writeBufferToFile(char* filename, char* buffer);
 char* getClientFolderName(char* client_id);
