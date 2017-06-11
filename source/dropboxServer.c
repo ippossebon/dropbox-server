@@ -303,6 +303,9 @@ void receive_command_client(int socket, char *userid){
 	    char *p;
 	    int i = 0;
 
+        printf("Userid: %s\n", userid);
+        printClientsList(clients_list);
+
 	    /* Recebe
         DOWNLOAD: download#filename
         UPLOAD: upload#filename#conteudo_do_arquivo
@@ -345,6 +348,7 @@ void receive_command_client(int socket, char *userid){
         }
         else if(strcmp("exit", command) == 0){
             close_connection(userid);
+            break;
         }
   }
 }
@@ -528,7 +532,7 @@ void close_connection(char* userid){
     pthread_mutex_lock(&lock_num_clients);
         num_clients--;
     pthread_mutex_unlock(&lock_num_clients);
-    
+
     client* user = findUserInClientsList(clients_list, userid);
 
     if (user == NULL){
