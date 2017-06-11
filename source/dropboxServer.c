@@ -340,7 +340,7 @@ void receive_command_client(int socket, char *userid){
             //deleteLocalFile(file_name);
         }
         else if(strcmp("exit", command) == 0){
-            return;
+            close_connection(userid);
         }
   }
 }
@@ -489,4 +489,26 @@ int main(int argc, char *argv[]){
 	clients_list = clearClientsList(clients_list);
 
 	return 0;
+}
+
+void close_connection(char* userid){
+    client* user = findUserInClientsList(clients_list, userid);
+
+    if (user == NULL){
+        printf("[close_connection] Erro: usuário não encontrado\n");
+        pthread_exit(NULL);
+    }
+
+    /* Desloga de um dos dispositivos. */
+    if (user->devices[1] == 1){
+        user->devices[1] = 0;
+    }
+    else if (user->devices[0] == 1){
+        user->devices[0] = 0;
+    }
+
+    /*Se não estiver logado em nenhum outro dispositivo, altera o seu status.*/
+    if (user->devices[0] == 0 && user->devices[1] == 0){
+        user->logged_in = 0;
+    }
 }

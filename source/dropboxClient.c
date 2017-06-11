@@ -311,8 +311,6 @@ int check_sync_dir(){
 
 
 void *sync_thread(void *socket_id){
-    printf(".............Na sync_thread....\n");
-
     /* Uns casts muito loucos */
 	sync_socket = *((int *) socket_id);
 
