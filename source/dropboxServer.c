@@ -20,6 +20,9 @@ client_node* clients_list;
 int num_clients;
 pthread_mutex_t lock_num_clients;
 
+pthread_mutex_t mutex_devices;
+
+
 /* Recebe as modificações que foram feitas localmente pelo cliente */
 void sync_client(int sync_socket, char* userid){
     //printf("No sync client, esperando o cliente começar. sync_socket: %d, userid: %s\n", sync_socket, userid);
@@ -277,7 +280,7 @@ int auth(int socket, char* userid){
         printClientsList(clients_list);
 	}
 	else{
-        /*TODO: SEÇÃO CRÍTICA*/
+        pthread_mutex_lock(&mutex_devices);
 
         /* Se o cliente já está cadastrado no sistema, verifica o número de
 		dispositivos nos quais está logado. */
@@ -294,6 +297,7 @@ int auth(int socket, char* userid){
         }
 
 		printf("Usuário liberado.\n");
+        pthread_mutex_unlock(&mutex_devices);
 	}
 
     num_bytes_sent = write(socket, "OK", 3);
@@ -455,6 +459,12 @@ int main(int argc, char *argv[]){
     /* Inicializa uma lista de clientes. */
 	clients_list = createClientsList();
 
+    /* Inicializa mutex */
+    if (pthread_mutex_init(&mutex_devices, NULL) != 0){
+        printf("[main] ERRO na inicialização do mutex_devices\n");
+        exit(1);
+    }
+
     /* Cria socket TCP para o servidor. */
 	if ((server_socket_id = socket(AF_INET, SOCK_STREAM, 0)) == -1){
 		printf("[main] ERROR opening socket\n");
@@ -541,7 +551,7 @@ void close_connection(char* userid){
         pthread_exit(NULL);
     }
 
-    printf("Vai deslogar o usuario: %s\n", user->userid);
+    pthread_mutex_lock(&mutex_devices);
 
     /* Desloga de um dos dispositivos. */
     if (user->devices[1] == 1){
@@ -557,6 +567,6 @@ void close_connection(char* userid){
         clients_list = removeClientFromList(clients_list, userid);
     }
 
-    printf("Terminou de deslogar...\n");
-    printClientsList(clients_list);
+    pthread_mutex_unlock(&mutex_devices);
+
 }
