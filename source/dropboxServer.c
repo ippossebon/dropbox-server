@@ -34,7 +34,8 @@ void sync_client(int sync_socket, char* userid){
 
         if(strcmp(command, "delete")==0){
             deleteLocalFile(file_name, userid);
-        }else if(strcmp(command, "upload")==0){
+        }
+        else if(strcmp(command, "upload")==0){
             char file_data[BUF_SIZE];
             bzero(file_data, BUF_SIZE);
             read(sync_socket, file_data, BUF_SIZE);
@@ -87,7 +88,6 @@ void sync_server(int sync_socket, char* userid){
 
         file_name = strtok_r(NULL, "#", &save);
     }
-
 
     /* Iterando sobre a lista do server para encontrar os arquivos que não estão no cliente e devem ser adicionados */
     file_node* node;
@@ -153,6 +153,7 @@ void list(int socket, char *userid){
 
   char* full_path = getClientFolderName(userid);
   char buffer[256];
+  int numb_files = 0; /* Gambiarra para verificar se o diretório é vazio*/
   bzero(buffer, 256);
 
   DIR *d;
@@ -162,14 +163,23 @@ void list(int socket, char *userid){
   if (d){
     /* Itera em todos os arquivo da pasta do cliente e coloca o nome dos
         arquivos dentro do buffer separados por '#' ex: file1#file2#file3# */
-    while ((dir = readdir(d)) != NULL){
-      if (dir->d_type == DT_REG){
-        strcat(buffer, dir->d_name);
-        strcat(buffer, "#");
-      }
-    }
+        while ((dir = readdir(d)) != NULL){
+          numb_files++;
+          if (dir->d_type == DT_REG){
+              printf("dir->d_name: %s\n", dir->d_name);
+            strcat(buffer, dir->d_name);
+            strcat(buffer, "#");
+          }
+        }
     closedir(d);
   }
+
+  if (numb_files <= 2){
+      /* O diretório é vazio (um diretório nunca é vazio, ele possui sempre dois
+        diretórios: . e .., por isso, verificamos se possui apenas esses dois itens) */
+      strcpy(buffer, "empty");
+  }
+
   int n;
   int size = strlen(buffer);
 
@@ -467,7 +477,7 @@ int main(int argc, char *argv[]){
     /* Informa que o socket em questões pode receber conexões, 5 indica o
     tamanho da fila de mensagens */
     /*TODO: por que está aceitando mais do que 5 clientes?*/
-	listen(server_socket_id, 5);
+	listen(server_socket_id, 1);
 
 	client_len = sizeof(struct sockaddr_in);
 

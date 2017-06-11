@@ -156,7 +156,7 @@ void sync_client(){
 
       char full_path[500];
       sprintf(full_path, "%s/%s", sync_dir, node->data->name);
-  
+
       send_file(full_path, send_file_buffer, sync_socket);
     }
 
@@ -193,11 +193,11 @@ void sync_server(){
     bzero(buffer, BUF_SIZE);
     file_node *node;
     // Enviando uma lista de nomes para o servidor no formato: nome_arquivo1#dataDeModificação#nome_arquivo2#data...#
-    for (node = current_files; node !=NULL; node = node->next) {                  
+    for (node = current_files; node !=NULL; node = node->next) {
         strcat(buffer, node->data->name);
         strcat(buffer, "#");
         strcat(buffer, node->data->last_modified);
-        strcat(buffer, "#");   
+        strcat(buffer, "#");
     }
     write(sync_socket, buffer, BUF_SIZE);
 
@@ -205,11 +205,11 @@ void sync_server(){
         bzero(buffer, BUF_SIZE);
         read(sync_socket, buffer, BUF_SIZE);
         if(strcmp(buffer, "end server sync")== 0){
-            break;                    
+            break;
         }
         char *save;
         char *command = strtok_r(buffer,"#", &save); //upload
-        char* file_name = strtok_r(NULL, "#", &save); 
+        char* file_name = strtok_r(NULL, "#", &save);
 
         if(strcmp(command, "delete")==0){
             char rm[500];
@@ -218,7 +218,7 @@ void sync_server(){
         }else if(strcmp(command, "upload")==0){
             char full_path[500];
             sprintf(full_path, "%s/%s", sync_dir, file_name);
-            get_file(full_path, sync_socket);    
+            get_file(full_path, sync_socket);
         }
     }
 
@@ -226,6 +226,8 @@ void sync_server(){
     fn_clear(current_files);
     current_files = fn_create_from_path(sync_dir);
 }
+
+
 void list(char* line, int socket){
   int num_bytes_read, num_bytes_sent;
   char buffer[256];
@@ -243,10 +245,16 @@ void list(char* line, int socket){
     printf("[list] ERROR reading from socket");
   }
 
-  printf("*** Arquivo(s): ***\n");
-  char *p, *save;
-  for (p = strtok_r(buffer,"#", &save); p != NULL; p = strtok_r(NULL, "#", &save)){
-    printf(">> %s\n", p);
+
+  if(strcmp(buffer, "empty") == 0){
+      printf("Este diretório está vazio.\n");
+  }
+  else{
+      printf("*** Arquivo(s): ***\n");
+      char *p, *save;
+      for (p = strtok_r(buffer,"#", &save); p != NULL; p = strtok_r(NULL, "#", &save)){
+        printf(">> %s\n", p);
+      }
   }
 }
 
