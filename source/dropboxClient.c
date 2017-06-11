@@ -310,17 +310,11 @@ int check_sync_dir(){
 }
 
 
-void *sync_thread(void *unused){
+void *sync_thread(void *socket_id){
     printf(".............Na sync_thread....\n");
-    /* Conecta socket específico para sincronização.*/
-    int sync_port = port+1;
-    sync_socket = connect_server(host, sync_port);
 
-    if (sync_socket == ERRO){
-      printf("Erro ao criar o socket de sincronização\n");
-      pthread_exit(NULL);
-    }
-
+    /* Uns casts muito loucos */
+	sync_socket = *((int *) socket_id);
 
     while(1){
         sync_client();
@@ -353,14 +347,26 @@ int main(int argc, char *argv[]){
     exit(0);
   }
 
+  /* Conecta ao servidor com o endereço e porta informados, retornando o sync_socket */
+  sync_socket = connect_server(host, port);
+
+  if(sync_socket < 0){
+    printf("Erro. Não foi possível conectar ao servidor.\n");
+    exit(0);
+  }
+
   int user_auth = auth(socket_id, userid);
   int sync_dir_checked = check_sync_dir();
 
   /* Se o usuário está OK, então pode executar ações */
   if(user_auth == SUCESSO && sync_dir_checked == SUCESSO){
 
+      /* Aloca dinamicamente para armazenar o número do socket e passar para a thread */
+    	int *arg = malloc(sizeof(*arg));
+    	*arg = sync_socket;
+
     /* Cria a thread de sincronização */
-    if(pthread_create( &s_thread, NULL, sync_thread, NULL) != 0){
+    if(pthread_create( &s_thread, NULL, sync_thread, arg) != 0){
       printf("[main] ERROR on thread creation.\n");
       close(sync_socket);
       exit(1);

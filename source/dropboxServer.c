@@ -416,8 +416,8 @@ void *client_thread(void *new_sockets){
 
 
 int main(int argc, char *argv[]){
-	int server_socket_id, new_socket_id, sync_socket, new_sync_socket;
-    struct sockaddr_in server_address, client_address, server_sync_address, client_sync_address;
+	int server_socket_id, new_socket_id, new_sync_socket;
+    struct sockaddr_in server_address, client_address, client_sync_address;
 	socklen_t client_len;
 
     /* Talvez devêssemos alocar por malloc
@@ -446,7 +446,8 @@ int main(int argc, char *argv[]){
     /* Informa que o socket em questões pode receber conexões, 5 indica o
     tamanho da fila de mensagens */
     /*TODO: por que está aceitando mais do que 5 clientes?*/
-	listen(server_socket_id, 5);
+    /* Dez conexões: 5 pro socket principal e 5 pra sincronização */
+	listen(server_socket_id, 10);
 
 	client_len = sizeof(struct sockaddr_in);
 
@@ -455,26 +456,8 @@ int main(int argc, char *argv[]){
 	    /* Aguarda a conexão do cliente no socket principal */
 		if((new_socket_id = accept(server_socket_id, (struct sockaddr *) &client_address, &client_len)) != ERRO){
 
-            /* Cria socket TCP para o sync do servidor. */
-            if ((sync_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1){
-                printf("[main] ERROR opening sync socket\n");
-                exit(1);
-            }
-
-            server_sync_address.sin_family = AF_INET;
-            server_sync_address.sin_port = htons(PORT+1);
-            server_sync_address.sin_addr.s_addr = INADDR_ANY;
-            bzero(&(server_sync_address.sin_zero), 8);
-
-            if(bind(sync_socket, (struct sockaddr *) &server_sync_address, sizeof(server_sync_address)) < 0){
-                printf("[main] ERROR on sync binding\n");
-                exit(1);
-            }
-
-            listen(sync_socket, 5);
-
             /* Aguarda a conexão do cliente no socket de sincronização */
-            if((new_sync_socket = accept(sync_socket, (struct sockaddr *) &client_sync_address, &client_len)) != ERRO){
+            if((new_sync_socket = accept(server_socket_id, (struct sockaddr *) &client_sync_address, &client_len)) != ERRO){
 
                 /* Aloca dinamicamente para armazenar o número do socket e passar para a thread */
                 arg_struct *args = malloc(sizeof(arg_struct *));
@@ -491,7 +474,6 @@ int main(int argc, char *argv[]){
             }
             else{
                 printf("[main] Erro no accept do sync\n");
-                close(sync_socket);
                 close(new_sync_socket);
                 exit(1);
             }
