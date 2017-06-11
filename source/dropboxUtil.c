@@ -53,7 +53,7 @@ char* getClientFolderName(char* client_id){
 
     char* full_path = malloc(sizeof(char) * MAXNAME * 3);
 
-    strcpy(full_path, "../server/client_folders/");  
+    strcpy(full_path, "../server/client_folders/");
     strcat(full_path, client_id);
     strcat(full_path, "/");
 

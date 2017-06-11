@@ -26,26 +26,26 @@ void sync_client(int sync_socket, char* userid){
         bzero(buffer, BUF_SIZE);
         read(sync_socket, buffer, BUF_SIZE);
         if(strcmp(buffer, "end client sync")== 0){
-            break;                    
+            break;
         }
         char *save;
         char *command = strtok_r(buffer,"#", &save); //upload
-        char* file_name = strtok_r(NULL, "#", &save); 
+        char* file_name = strtok_r(NULL, "#", &save);
 
         if(strcmp(command, "delete")==0){
             deleteLocalFile(file_name, userid);
         }else if(strcmp(command, "upload")==0){
             char file_data[BUF_SIZE];
-            bzero(file_data, BUF_SIZE);            
+            bzero(file_data, BUF_SIZE);
             read(sync_socket, file_data, BUF_SIZE);
-            receive_file(file_name, file_data, userid);    
+            receive_file(file_name, file_data, userid);
         }
     }
 
 }
 
 void sync_server(int sync_socket, char* userid){
- 
+
     char buffer[BUF_SIZE];
     bzero(buffer, BUF_SIZE);
     char* full_path = getClientFolderName(userid);
@@ -56,8 +56,8 @@ void sync_server(int sync_socket, char* userid){
     char *save;
     char* file_name = strtok_r(buffer, "#", &save);
     char buffer2[BUF_SIZE];
-    while(file_name != NULL){       
- 
+    while(file_name != NULL){
+
         char* date_file = strtok_r(NULL, "#", &save);
         file_info* file = fn_find(real_current_files, file_name);
 
@@ -68,14 +68,14 @@ void sync_server(int sync_socket, char* userid){
             if(strcmp(date_file, file->last_modified) < 0){
                 //servidor esta mais atualizado -> ENVIAR PARA CLIENTE
                 printf("Enviar arquivo %s modificado para cliente. client:%s server:%s\n", file_name, date_file, file->last_modified);
-                
+
                 bzero(buffer2, BUF_SIZE);
                 sprintf(buffer2, "upload#%s", file_name);
                 write(sync_socket, buffer2, BUF_SIZE);
 
                 send_file(file_name, sync_socket, userid);
-            } 
-            
+            }
+
         }else{ // não encontrou, então deve ser deletado no cliente
             //DELETE NO CLIENTE
             printf("DELETAR arquivo %s no cliente. \n", file_name);
@@ -83,11 +83,11 @@ void sync_server(int sync_socket, char* userid){
             sprintf(buffer2, "delete#%s", file_name);
             write(sync_socket, buffer2, BUF_SIZE);
 
-        } 
+        }
 
         file_name = strtok_r(NULL, "#", &save);
     }
-    
+
 
     /* Iterando sobre a lista do server para encontrar os arquivos que não estão no cliente e devem ser adicionados */
     file_node* node;
@@ -101,7 +101,7 @@ void sync_server(int sync_socket, char* userid){
             send_file(node->data->name, sync_socket, userid);
         }
     }
-   
+
   /* Avisa o cliente que terminou de fazer o seu sync. */
   bzero(buffer, BUF_SIZE);
   strcat(buffer, "end server sync");
@@ -230,14 +230,11 @@ int auth(int socket, char* userid){
 
         if(existsFolder(dir_client) == 0){
             /* cria uma pasta para o usuário no server */
-            printf("[auth] Vai criar a pasta.\n");
             char dir[100];
             strcpy(dir, "mkdir ");
             strcat(dir, dir_client);
             system(dir);
         }
-
-        printf("[auth] Deve ter criado a pasta.\n");
 
         /* TODO: como inicializar a variavel devices? */
         new_client.devices[0] = 1;
@@ -424,7 +421,7 @@ int createSocket(int port){
     return ERRO;
 	}
 
-	listen(server_socket_id, 1);
+	listen(server_socket_id, 5);
 
 
   /* Aceita conexões de clientes */
