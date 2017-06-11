@@ -89,7 +89,6 @@ void send_file(char *file, char* buffer, int socket){
 
   /* Envia conteúdo do buffer pelo socket */
   int num_bytes_sent;
-  printf("[send_file] enviando p server: %s\n", buffer);
   num_bytes_sent = write(socket, buffer, BUF_SIZE);
 
   if (num_bytes_sent < 0){
@@ -120,22 +119,18 @@ void get_file(char *file, int socket){
 o servidor */
 void sync_client(){
 
-  printf("Na sync_client\n");
   /* Informa ao server que vai sincronizar (avisa quais foram as modificações
   realizadas localmente)*/
   char buffer[BUF_SIZE];
   bzero(buffer, BUF_SIZE);
   strcpy(buffer, "start client sync");
 
-  printf("Vai avisar o server que vai fazer a sincronizacao\n");
   write(sync_socket, buffer, BUF_SIZE);
 
   /* Aqui estará a nova lista com os arquivos atuais/reais */
   real_current_files = fn_create_from_path(sync_dir);
-
   file_node* node;
 
-  printf("Comparando os arquivos NOVOS\n");
   /* Para cada arquivo "real/nova" bucamos na lista "antiga" se ele existe.
     Se encontrar: verifica se foi modificado. Se tiver sido modificado então = UPLOAD do arquivo.
     Se não encontrar: significa que esse arquivo foi adicionado = UPLOAD arquivo */
@@ -145,7 +140,6 @@ void sync_client(){
     int send = 1;
 
     if(old_file != NULL){ //encontrou o arquivo, verifica se foi modificado
-      /* s1 < s2 = numero negativo, entao s2 foi atualizada */
        if(strcmp(old_file->last_modified, node->data->last_modified) == 0){
            send =0;
        }
@@ -167,8 +161,6 @@ void sync_client(){
     }
 
   }
-
-  printf("Comparando os arquivos ANTIGOS\n");
 
   /* Para cada arquivo "antigo" bucamos na lista "real/nova" se ele existe.
     Se encontrar: a verificação de cima já está fazendo o que precisa ser feito, então não faria nada nesse caso.
@@ -197,40 +189,47 @@ void sync_client(){
 /* Recebe as modificações que foram feitas localmente pelo server */
 void sync_server(){
 
-    printf("Aguardando arquivos do servidor\n");
-
     char buffer[BUF_SIZE];
+    bzero(buffer, BUF_SIZE);
+    file_node *node;
+    // Enviando uma lista de nomes para o servidor no formato: nome_arquivo1#dataDeModificação#nome_arquivo2#data...#
+    for (node = current_files; node !=NULL; node = node->next) {                  
+        strcat(buffer, node->data->name);
+        strcat(buffer, "#");
+        strcat(buffer, node->data->last_modified);
+        strcat(buffer, "#");   
+    }
+    write(sync_socket, buffer, BUF_SIZE);
 
     while(1){
         bzero(buffer, BUF_SIZE);
-        int b = read(sync_socket, buffer, BUF_SIZE);
-        printf("[sync_server] bytes: %d buffer: [%s] \n", b, buffer);
+        read(sync_socket, buffer, BUF_SIZE);
         if(strcmp(buffer, "end server sync")== 0){
-            printf("[sync_server] saiu \n");
             break;                    
         }
+        char *save;
+        char *command = strtok_r(buffer,"#", &save); //upload
+        char* file_name = strtok_r(NULL, "#", &save); 
 
+        if(strcmp(command, "delete")==0){
+            char rm[500];
+            sprintf(rm, "rm \"%s/%s\"", sync_dir, file_name);
+            system(rm);
+        }else if(strcmp(command, "upload")==0){
+            char full_path[500];
+            sprintf(full_path, "%s/%s", sync_dir, file_name);
+            get_file(full_path, sync_socket);    
+        }
     }
 
-
-/*
-    if( strcmp("upload", command) == 0){
-      send_file(fileName, buffer, socket_id);
-    }
-    else if( strcmp("download", command) == 0){
-      get_file(fileName, buffer, socket_id);
-    }
-    else if( strcmp("end server sync", command) == 0){
-      break;
-    }
-    */
-  
+    // A current está atualizando para que não dar erro.
+    fn_clear(current_files);
+    current_files = fn_create_from_path(sync_dir);
 }
-
 void list(char* line, int socket){
   int num_bytes_read, num_bytes_sent;
   char buffer[256];
-	bzero(buffer, 256);
+  bzero(buffer, 256);
 
   num_bytes_sent = write(socket, line, strlen(line)); //enviar o #list#
   if (num_bytes_sent < 0){
@@ -318,9 +317,7 @@ void *sync_thread(void *unused){
     while(1){
         sync_client();
         sync_server();
-        printf("mimindo... \n");
-        sleep(30);
-        printf("acordei \n");
+        sleep(10);
     }
 
     return 0;
