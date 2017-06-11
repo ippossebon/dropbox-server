@@ -26,26 +26,27 @@ void sync_client(int sync_socket, char* userid){
         bzero(buffer, BUF_SIZE);
         read(sync_socket, buffer, BUF_SIZE);
         if(strcmp(buffer, "end client sync")== 0){
-            break;                    
+            break;
         }
         char *save;
         char *command = strtok_r(buffer,"#", &save); //upload
-        char* file_name = strtok_r(NULL, "#", &save); 
+        char* file_name = strtok_r(NULL, "#", &save);
 
         if(strcmp(command, "delete")==0){
             deleteLocalFile(file_name, userid);
-        }else if(strcmp(command, "upload")==0){
+        }
+        else if(strcmp(command, "upload")==0){
             char file_data[BUF_SIZE];
-            bzero(file_data, BUF_SIZE);            
+            bzero(file_data, BUF_SIZE);
             read(sync_socket, file_data, BUF_SIZE);
-            receive_file(file_name, file_data, userid);    
+            receive_file(file_name, file_data, userid);
         }
     }
 
 }
 
 void sync_server(int sync_socket, char* userid){
- 
+
     char buffer[BUF_SIZE];
     bzero(buffer, BUF_SIZE);
     char* full_path = getClientFolderName(userid);
@@ -56,8 +57,8 @@ void sync_server(int sync_socket, char* userid){
     char *save;
     char* file_name = strtok_r(buffer, "#", &save);
     char buffer2[BUF_SIZE];
-    while(file_name != NULL){       
- 
+    while(file_name != NULL){
+
         char* date_file = strtok_r(NULL, "#", &save);
         file_info* file = fn_find(real_current_files, file_name);
 
@@ -68,14 +69,14 @@ void sync_server(int sync_socket, char* userid){
             if(strcmp(date_file, file->last_modified) < 0){
                 //servidor esta mais atualizado -> ENVIAR PARA CLIENTE
                 printf("Enviar arquivo %s modificado para cliente. client:%s server:%s\n", file_name, date_file, file->last_modified);
-                
+
                 bzero(buffer2, BUF_SIZE);
                 sprintf(buffer2, "upload#%s", file_name);
                 write(sync_socket, buffer2, BUF_SIZE);
 
                 send_file(file_name, sync_socket, userid);
-            } 
-            
+            }
+
         }else{ // não encontrou, então deve ser deletado no cliente
             //DELETE NO CLIENTE
             printf("DELETAR arquivo %s no cliente. \n", file_name);
@@ -83,11 +84,10 @@ void sync_server(int sync_socket, char* userid){
             sprintf(buffer2, "delete#%s", file_name);
             write(sync_socket, buffer2, BUF_SIZE);
 
-        } 
+        }
 
         file_name = strtok_r(NULL, "#", &save);
     }
-    
 
     /* Iterando sobre a lista do server para encontrar os arquivos que não estão no cliente e devem ser adicionados */
     file_node* node;
@@ -101,7 +101,7 @@ void sync_server(int sync_socket, char* userid){
             send_file(node->data->name, sync_socket, userid);
         }
     }
-   
+
   /* Avisa o cliente que terminou de fazer o seu sync. */
   bzero(buffer, BUF_SIZE);
   strcat(buffer, "end server sync");
@@ -153,6 +153,7 @@ void list(int socket, char *userid){
 
   char* full_path = getClientFolderName(userid);
   char buffer[256];
+  int numb_files = 0; /* Gambiarra para verificar se o diretório é vazio*/
   bzero(buffer, 256);
 
   DIR *d;
@@ -162,14 +163,23 @@ void list(int socket, char *userid){
   if (d){
     /* Itera em todos os arquivo da pasta do cliente e coloca o nome dos
         arquivos dentro do buffer separados por '#' ex: file1#file2#file3# */
-    while ((dir = readdir(d)) != NULL){
-      if (dir->d_type == DT_REG){
-        strcat(buffer, dir->d_name);
-        strcat(buffer, "#");
-      }
-    }
+        while ((dir = readdir(d)) != NULL){
+          numb_files++;
+          if (dir->d_type == DT_REG){
+              printf("dir->d_name: %s\n", dir->d_name);
+            strcat(buffer, dir->d_name);
+            strcat(buffer, "#");
+          }
+        }
     closedir(d);
   }
+
+  if (numb_files <= 2){
+      /* O diretório é vazio (um diretório nunca é vazio, ele possui sempre dois
+        diretórios: . e .., por isso, verificamos se possui apenas esses dois itens) */
+      strcpy(buffer, "empty");
+  }
+
   int n;
   int size = strlen(buffer);
 
@@ -470,7 +480,7 @@ int main(int argc, char *argv[]){
     /* Informa que o socket em questões pode receber conexões, 5 indica o
     tamanho da fila de mensagens */
     /*TODO: por que está aceitando mais do que 5 clientes?*/
-	listen(server_socket_id, 5);
+	listen(server_socket_id, 1);
 
 	client_len = sizeof(struct sockaddr_in);
 
