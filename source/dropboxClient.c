@@ -16,6 +16,7 @@
 char host[128];
 int port;
 char userid[MAXNAME];
+
 /* Thread para a sincronização do cliente */
 pthread_t s_thread;
 
@@ -88,8 +89,8 @@ void send_file(char *file, char* buffer, int socket){
 
   /* Envia conteúdo do buffer pelo socket */
   int num_bytes_sent;
-  int buffer_size = strlen(buffer);
-	num_bytes_sent = write(socket, buffer, buffer_size);
+  printf("[send_file] enviando p server: %s\n", buffer);
+  num_bytes_sent = write(socket, buffer, BUF_SIZE);
 
   if (num_bytes_sent < 0){
     printf("ERROR writing to socket\n");
@@ -101,23 +102,18 @@ void send_file(char *file, char* buffer, int socket){
 Deverá ser executada quando for realizar download de um arquivo.
 file –filename.ext
 DOWNLOAD */
-void get_file(char *file, char* line, int socket){
-  int num_bytes_read, num_bytes_sent;
-  char buffer[256];
-	bzero(buffer, 256);
+void get_file(char *file, int socket){
+    int num_bytes_read;
+    char buffer[BUF_SIZE];
+    bzero(buffer, BUF_SIZE);
 
-  num_bytes_sent = write(socket, line, strlen(line));
-  if (num_bytes_sent < 0){
-    printf("ERROR writing from socket");
-  }
+    num_bytes_read = read(socket, buffer, BUF_SIZE);
 
-  num_bytes_read = read(socket, buffer, 256);
+    if (num_bytes_read < 0){
+        printf("ERROR reading from socket");
+    }
 
-  if (num_bytes_read < 0){
-    printf("ERROR reading from socket");
-  }
-
-  writeBufferToFile(file, buffer);
+    writeBufferToFile(file, buffer);
 }
 
 /* Sincroniza o diretório “sync_dir_<nomeusuário>” com
@@ -127,15 +123,14 @@ void sync_client(){
   printf("Na sync_client\n");
   /* Informa ao server que vai sincronizar (avisa quais foram as modificações
   realizadas localmente)*/
-  char buffer[256];
+  char buffer[BUF_SIZE];
+  bzero(buffer, BUF_SIZE);
   strcpy(buffer, "start client sync");
-  int buffer_size = strlen(buffer);
 
   printf("Vai avisar o server que vai fazer a sincronizacao\n");
-  write(sync_socket, buffer, buffer_size);
+  write(sync_socket, buffer, BUF_SIZE);
 
-  /* Aqui estará a nova lista com os arquivos atuais/reais
-      Vão em frente, troquem o nome... */
+  /* Aqui estará a nova lista com os arquivos atuais/reais */
   real_current_files = fn_create_from_path(sync_dir);
 
   file_node* node;
@@ -147,77 +142,45 @@ void sync_client(){
   for (node = real_current_files; node !=NULL; node = node->next) {
     /* Retorna o file_info do nodo se encontrado, se não retorna NULL */
     file_info* old_file = fn_find(current_files, node->data->name);
+    int send = 1;
 
     if(old_file != NULL){ //encontrou o arquivo, verifica se foi modificado
       /* s1 < s2 = numero negativo, entao s2 foi atualizada */
-      if(strcmp(old_file->last_modified, node->data->last_modified) < 0){
-        printf("O arquivo %s foi MODIFICADO às %s\n", node->data->name, node->data->last_modified);
-
-        /* Deve enviar o arquivo para o servidor. Análogo a uma operação
-        UPLOAD.*/
-        bzero(buffer, 256);
-        strcat(buffer, "upload");
-        int buffer_size = strlen(buffer);
-        write(sync_socket, buffer, buffer_size);
-
-        char send_file_buffer[256];
-        bzero(send_file_buffer, 256);
-        send_file(node->data->name, send_file_buffer, sync_socket);
-      }
+       if(strcmp(old_file->last_modified, node->data->last_modified) == 0){
+           send =0;
+       }
     }
-    else{ //Não encontrou o arquivo, então ele foi adicionado
-      printf("O arquivo %s foi ADICIONADO às %s\n", node->data->name, node->data->last_modified);
 
-      /* Deve enviar o arquivo para o servidor. Análogo a uma operação
-      UPLOAD.*/
-      bzero(buffer, 256);
-      strcat(buffer, "upload");
-      int buffer_size = strlen(buffer);
-      write(sync_socket, buffer, buffer_size);
+    if (send == 1){ //Não encontrou o arquivo, então ele foi adicionado
+      /* Deve enviar o arquivo para o servidor. Análogo a uma operação UPLOAD.*/
+      bzero(buffer, BUF_SIZE);
+      sprintf(buffer, "upload#%s", node->data->name);
+      write(sync_socket, buffer, BUF_SIZE);
 
-      char send_file_buffer[256];
-      bzero(send_file_buffer, 256);
-      send_file(node->data->name, send_file_buffer, sync_socket);
+      char send_file_buffer[BUF_SIZE];
+      bzero(send_file_buffer, BUF_SIZE);
+
+      char full_path[500];
+      sprintf(full_path, "%s/%s", sync_dir, node->data->name);
+  
+      send_file(full_path, send_file_buffer, sync_socket);
     }
+
   }
 
   printf("Comparando os arquivos ANTIGOS\n");
 
   /* Para cada arquivo "antigo" bucamos na lista "real/nova" se ele existe.
-    Se encontrar: acredito que a verificação de cima já está fazendo o que precisa ser feito, então não faria nada nesse caso.
+    Se encontrar: a verificação de cima já está fazendo o que precisa ser feito, então não faria nada nesse caso.
     Se não encontrar: significa que esse arquivo foi deletado = DELETE arquivo */
   for (node = current_files; node !=NULL; node = node->next) {
     /* Retorna o file_info do nodo se encontrado, se não retorna NULL */
     file_info* old_file = fn_find(real_current_files, node->data->name);
 
-    if(old_file != NULL){ //encontrou o arquivo, verifica se foi modificado
-      /* s1 < s2 = numero negativo, entao s2 foi atualizada */
-      /* Se encontrar: acredito que a verificação de cima já está fazendo o que precisa ser feito,
-        então não faria nada nesse caso. */
-      if(strcmp(old_file->last_modified, node->data->last_modified) < 0){
-        printf("O arquivo %s foi MODIFICADO às %s\n", node->data->name, node->data->last_modified);
-
-        /* Deve enviar o arquivo para o servidor. Análogo a uma operação
-        UPLOAD.*/
-        bzero(buffer, 256);
-        strcat(buffer, "upload");
-        int buffer_size = strlen(buffer);
-        write(sync_socket, buffer, buffer_size);
-
-        char send_file_buffer[256];
-        bzero(send_file_buffer, 256);
-        send_file(node->data->name, send_file_buffer, sync_socket);
-      }
-    }
-    else{ //Não encontrou o arquivo, então ele foi deletado
-      printf("O arquivo %s foi DELETADO.\n", node->data->name);
-
-      /* Deve pedir para o servidor apagar o arquivo */
-      bzero(buffer, 256);
-      strcat(buffer, "delete#");
-      strcat(buffer, node->data->name);
-      buffer_size = strlen(buffer);
-      write(sync_socket, buffer, buffer_size);
+    if(old_file == NULL){ //nao encontrou o arquivo = deletado
+        bzero(buffer, BUF_SIZE);
+        sprintf(buffer, "delete#%s", node->data->name);
+        write(sync_socket, buffer, BUF_SIZE);
     }
   }
 
@@ -225,23 +188,31 @@ void sync_client(){
   /* current_file agora aponta para a real_current_files */
   current_files = real_current_files;
 
-  printf("TERMINOU SYNC CLIENT\n");
   /* Avisa o servidor que terminou de fazer o seu sync. */
-  bzero(buffer, 256);
+  bzero(buffer, BUF_SIZE);
   strcat(buffer, "end client sync");
-  buffer_size = strlen(buffer);
-
-  printf("Vai escrever END SYNC CLIENT\n");
-  write(sync_socket, buffer, buffer_size);
+  write(sync_socket, buffer, BUF_SIZE);
 }
 
 /* Recebe as modificações que foram feitas localmente pelo server */
 void sync_server(){
-  char buffer[256];
-  bzero(buffer, 256);
-  read(sync_socket, buffer, 256);
 
-  if (strcmp(buffer, "start server sync") == 0){
+    printf("Aguardando arquivos do servidor\n");
+
+    char buffer[BUF_SIZE];
+
+    while(1){
+        bzero(buffer, BUF_SIZE);
+        int b = read(sync_socket, buffer, BUF_SIZE);
+        printf("[sync_server] bytes: %d buffer: [%s] \n", b, buffer);
+        if(strcmp(buffer, "end server sync")== 0){
+            printf("[sync_server] saiu \n");
+            break;                    
+        }
+
+    }
+
+
 /*
     if( strcmp("upload", command) == 0){
       send_file(fileName, buffer, socket_id);
@@ -253,11 +224,7 @@ void sync_server(){
       break;
     }
     */
-  }
-  else{
-    printf("[sync_client] Erro ao receber comando de sync do client.\n");
-    exit(1);
-  }
+  
 }
 
 void list(char* line, int socket){
@@ -278,8 +245,8 @@ void list(char* line, int socket){
   }
 
   printf("*** Arquivo(s): ***\n");
-  char *p;
-  for (p = strtok(buffer,"#"); p != NULL; p = strtok(NULL, "#")){
+  char *p, *save;
+  for (p = strtok_r(buffer,"#", &save); p != NULL; p = strtok_r(NULL, "#", &save)){
     printf(">> %s\n", p);
   }
 }
@@ -351,6 +318,9 @@ void *sync_thread(void *unused){
     while(1){
         sync_client();
         sync_server();
+        printf("mimindo... \n");
+        sleep(30);
+        printf("acordei \n");
     }
 
     return 0;
@@ -418,8 +388,8 @@ int main(int argc, char *argv[]){
       line[strlen(line) - 1] = '\0';
 
       int i=0;
-      char *p;
-      for (p = strtok(line," "); p != NULL; p = strtok(NULL, " ")){
+      char *p, *save;
+      for (p = strtok_r(line," ", &save); p != NULL; p = strtok_r(NULL, " ", &save)){
         if (i == 0){
           strcpy(command, p);
         }
@@ -441,7 +411,10 @@ int main(int argc, char *argv[]){
         send_file(fileName, buffer, socket_id);
       }
       else if( strcmp("download", command) == 0){
-        get_file(fileName, buffer, socket_id);
+        if (write(socket_id, buffer, strlen(buffer)) < 0){
+            printf("ERROR writing from socket");
+        }
+        get_file(fileName, socket_id);
       }
       else if( strcmp("list", command) == 0){
         list(buffer, socket_id);

@@ -19,5 +19,6 @@ void sync_client(int sync_socket, char* userid);
 void sync_server(int sync_socket, char* userid);
 void *sync_thread(void *new_sync_socket);
 int createSocket();
+void deleteLocalFile(char* file_name, char* userid);
 
 #endif
