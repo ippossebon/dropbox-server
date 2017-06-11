@@ -203,9 +203,11 @@ client* findUserInClientsList(client_node* list, char *username) {
    for (node = list; node !=NULL; node = node->next) {
        client* user = node->client;
        if (strcmp(user->userid, username) == 0) {
+           printf("[findUserInClientsList] Achou o usuário: %s\n", user->userid);
           return user;
        }
    }
+   printf("[findUserInClientsList] Não achou o usuário %s\n", username);
    return NULL;
 }
 

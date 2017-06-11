@@ -234,13 +234,13 @@ int auth(int socket, char* userid){
 	if (user == NULL){
 
 		/* O usuário ainda não é cadastrado. */
-		struct client new_client;
-		strcpy(new_client.userid, userid);
+		client* new_client = malloc(sizeof(client));
+		strcpy(new_client->userid, userid);
 
         char dir_client[128];
         bzero(dir_client, 128);
         strcat(dir_client, "./client_folders/");
-        strcat(dir_client, new_client.userid);
+        strcat(dir_client, new_client->userid);
 
         if(existsFolder(dir_client) == 0){
             /* cria uma pasta para o usuário no server */
@@ -251,12 +251,12 @@ int auth(int socket, char* userid){
         }
 
         /* TODO: como inicializar a variavel devices? */
-        new_client.devices[0] = 1;
-		new_client.devices[1] = 0;
-        new_client.files = fn_create_from_path(dir_client);
-		new_client.logged_in = 1;
+        new_client->devices[0] = 1;
+		new_client->devices[1] = 0;
+        new_client->files = fn_create_from_path(dir_client);
+		new_client->logged_in = 1;
 
-		clients_list = addClientToList(clients_list, &new_client);
+		clients_list = addClientToList(clients_list, new_client);
 		printf("[auth] Novo usuário > adicionado à lista. Lista de clientes: \n");
 
         printClientsList(clients_list);
@@ -348,7 +348,7 @@ void receive_command_client(int socket, char *userid){
         }
         else if(strcmp("exit", command) == 0){
             close_connection(userid);
-            break;
+            return;
         }
   }
 }
@@ -519,7 +519,8 @@ int main(int argc, char *argv[]){
     }
 
 	close(server_socket_id);
-	clients_list = clearClientsList(clients_list);
+
+	//clients_list = clearClientsList(clients_list);
     pthread_mutex_destroy(&lock_num_clients);
 
 	return 0;
@@ -540,6 +541,8 @@ void close_connection(char* userid){
         pthread_exit(NULL);
     }
 
+    printf("Vai deslogar o usuario: %s\n", user->userid);
+
     /* Desloga de um dos dispositivos. */
     if (user->devices[1] == 1){
         user->devices[1] = 0;
@@ -548,8 +551,12 @@ void close_connection(char* userid){
         user->devices[0] = 0;
     }
 
-    /*Se não estiver logado em nenhum outro dispositivo, altera o seu status.*/
+    /*Se não estiver logado em nenhum outro dispositivo, retira o usuário da lista.*/
     if (user->devices[0] == 0 && user->devices[1] == 0){
         user->logged_in = 0;
+        clients_list = removeClientFromList(clients_list, userid);
     }
+
+    printf("Terminou de deslogar...\n");
+    printClientsList(clients_list);
 }
