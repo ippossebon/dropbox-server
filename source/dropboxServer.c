@@ -19,14 +19,12 @@
 client_node* clients_list;
 int num_clients;
 pthread_mutex_t lock_num_clients;
-
+pthread_mutex_t mutex_clients_list;
 pthread_mutex_t mutex_devices;
-
+pthread_mutex_t mutex_client_files;
 
 /* Recebe as modificações que foram feitas localmente pelo cliente */
 void sync_client(int sync_socket, char* userid){
-    //printf("No sync client, esperando o cliente começar. sync_socket: %d, userid: %s\n", sync_socket, userid);
-
     char buffer[BUF_SIZE];
 
     while(1){
@@ -57,13 +55,17 @@ void sync_server(int sync_socket, char* userid){
     char buffer[BUF_SIZE];
     bzero(buffer, BUF_SIZE);
     char* full_path = getClientFolderName(userid);
+
+    pthread_mutex_lock(&mutex_client_files);
     file_node* real_current_files = fn_create_from_path(full_path);
+    pthread_mutex_unlock(&mutex_client_files);
 
     read(sync_socket, buffer, BUF_SIZE);
 
     char *save;
     char* file_name = strtok_r(buffer, "#", &save);
     char buffer2[BUF_SIZE];
+
     while(file_name != NULL){
 
         char* date_file = strtok_r(NULL, "#", &save);
@@ -90,7 +92,6 @@ void sync_server(int sync_socket, char* userid){
             bzero(buffer2, BUF_SIZE);
             sprintf(buffer2, "delete#%s", file_name);
             write(sync_socket, buffer2, BUF_SIZE);
-
         }
 
         file_name = strtok_r(NULL, "#", &save);
@@ -131,7 +132,6 @@ void receive_file(char *file_name, char* file_data, char *userid){
 	char *full_path = getClientFolderName(userid);
 	strcat(full_path, file_name);
 
-    //printf("Folder do cliente: %s\n", full_path);
 	/* Cria um novo arquivo, na pasta do cliente logado, com o nome do arquivo
 	informado, com o conteúdo do arquivo enviado pelo socket. */
 	writeBufferToFile(full_path, file_data);
@@ -157,11 +157,10 @@ void send_file(char *file_name, int socket, char *userid){
 
 /* Lista todos os arquivos contidos no diretório remoto do cliente. */
 void list(int socket, char *userid){
-
-  char* full_path = getClientFolderName(userid);
-  char buffer[256];
-  int numb_files = 0; /* Gambiarra para verificar se o diretório é vazio*/
-  bzero(buffer, 256);
+    char* full_path = getClientFolderName(userid);
+    char buffer[256];
+    int numb_files = 0; /* Gambiarra para verificar se o diretório é vazio*/
+    bzero(buffer, 256);
 
   DIR *d;
   struct dirent *dir;
@@ -247,7 +246,9 @@ int auth(int socket, char* userid){
 	Caso contrário, verifica se o número de dispositivos logados é respeitado.
 	Se tudo estiver ok, envia mensagem de sucesso para o cliente e prossegue com
 	as operações. */
+    pthread_mutex_lock(&mutex_clients_list);
 	client* user = findUserInClientsList(clients_list, userid);
+    pthread_mutex_unlock(&mutex_clients_list);
 
 	if (user == NULL){
 
@@ -268,15 +269,22 @@ int auth(int socket, char* userid){
             system(dir);
         }
 
-        /* TODO: como inicializar a variavel devices? */
+        pthread_mutex_lock(&mutex_devices);
         new_client->devices[0] = 1;
 		new_client->devices[1] = 0;
+        pthread_mutex_unlock(&mutex_devices);
+
+        pthread_mutex_lock(&mutex_client_files);
         new_client->files = fn_create_from_path(dir_client);
-		new_client->logged_in = 1;
+        pthread_mutex_unlock(&mutex_client_files);
 
+        new_client->logged_in = 1;
+
+        pthread_mutex_lock(&mutex_clients_list);
 		clients_list = addClientToList(clients_list, new_client);
-		printf("[auth] Novo usuário > adicionado à lista. Lista de clientes: \n");
+        pthread_mutex_unlock(&mutex_clients_list);
 
+		printf("[auth] Novo usuário > adicionado à lista. Lista de clientes: \n");
         printClientsList(clients_list);
 	}
 	else{
@@ -447,23 +455,33 @@ int main(int argc, char *argv[]){
     struct sockaddr_in server_address, client_address, client_sync_address;
 	socklen_t client_len;
 
-    if (pthread_mutex_init(&lock_num_clients, NULL) != 0){
-        printf("[main] ERROR criando mutex.\n");
-        exit(1);
-    }
-
-    /* Talvez devêssemos alocar por malloc
-    TODO: rever */
-	pthread_t c_thread;
-
-    /* Inicializa uma lista de clientes. */
-	clients_list = createClientsList();
-
     /* Inicializa mutex */
     if (pthread_mutex_init(&mutex_devices, NULL) != 0){
         printf("[main] ERRO na inicialização do mutex_devices\n");
         exit(1);
     }
+
+    if (pthread_mutex_init(&lock_num_clients, NULL) != 0){
+        printf("[main] ERRO na inicialização do lock_num_clients\n");
+        exit(1);
+    }
+
+    if (pthread_mutex_init(&mutex_clients_list, NULL) != 0){
+        printf("[main] ERRO na inicialização do mutex_clients_list\n");
+        exit(1);
+    }
+
+    if (pthread_mutex_init(&mutex_client_files, NULL) != 0){
+        printf("[main] ERRO na inicialização do mutex_client_files\n");
+        exit(1);
+    }
+
+	pthread_t c_thread;
+
+    /* Inicializa uma lista de clientes. */
+    pthread_mutex_lock(&mutex_clients_list);
+	clients_list = createClientsList();
+    pthread_mutex_unlock(&mutex_clients_list);
 
     /* Cria socket TCP para o servidor. */
 	if ((server_socket_id = socket(AF_INET, SOCK_STREAM, 0)) == -1){
@@ -529,8 +547,14 @@ int main(int argc, char *argv[]){
 
 	close(server_socket_id);
 
-	//clients_list = clearClientsList(clients_list);
+    pthread_mutex_lock(&mutex_clients_list);
+	clients_list = clearClientsList(clients_list);
+    pthread_mutex_lock(&mutex_clients_list);
+
     pthread_mutex_destroy(&lock_num_clients);
+    pthread_mutex_destroy(&mutex_devices);
+    pthread_mutex_destroy(&mutex_clients_list);
+    pthread_mutex_destroy(&mutex_client_files);
 
 	return 0;
 }
@@ -540,11 +564,13 @@ void close_connection(char* userid){
 
     /* Decrementa o número de clientes conectados */
     pthread_mutex_lock(&lock_num_clients);
-        num_clients--;
-        printf("[close_connection] Número de clientes conectados: %d\n", num_clients);
+    num_clients--;
+    printf("[close_connection] Número de clientes conectados: %d\n", num_clients);
     pthread_mutex_unlock(&lock_num_clients);
 
+    pthread_mutex_lock(&mutex_clients_list);
     client* user = findUserInClientsList(clients_list, userid);
+    pthread_mutex_unlock(&mutex_clients_list);
 
     if (user == NULL){
         printf("[close_connection] Erro: usuário não encontrado\n");
@@ -568,5 +594,4 @@ void close_connection(char* userid){
     }
 
     pthread_mutex_unlock(&mutex_devices);
-
 }
