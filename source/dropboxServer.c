@@ -214,6 +214,21 @@ int auth(int socket, char* userid){
 
   int num_bytes_read, num_bytes_sent;
 
+  /* Mutex para testar se pode conectar mais clientes */
+  pthread_mutex_lock(&lock_num_clients);
+      if(num_clients >= MAXCLIENTS){
+          printf("[auth] Número de clientes conectados excedido\n");
+          num_bytes_sent = write(socket, "NOT OK", 7);
+          printf("[auth] Número de clientes conectados: %d\n", num_clients);
+          pthread_mutex_unlock(&lock_num_clients);
+          return ERRO;
+      }
+      else{
+          num_clients++;
+          printf("[auth] Número de clientes conectados: %d\n", num_clients);
+      }
+  pthread_mutex_unlock(&lock_num_clients);
+
   /* No buffer vem o userid do cliente que esta tentando conectar.
   Lê do socket: userid */
   num_bytes_read = read(socket, buffer, 256);
@@ -470,51 +485,35 @@ int main(int argc, char *argv[]){
 	/* Laço que fica aguardando conexões de clientes e criandos as threads*/
 	while(1){
 
-        printf("[main] Número de clientes: %d\n", num_clients);
+	    /* Aguarda a conexão do cliente no socket principal */
+		if((new_socket_id = accept(server_socket_id, (struct sockaddr *) &client_address, &client_len)) != ERRO){
 
-        int ctrl;
-        /* Mutex para testar se pode conectar mais clientes */
-        pthread_mutex_lock(&lock_num_clients);
-            if(num_clients >= MAXCLIENTS){
-                ctrl = ERRO;
-            }
-            else{
-                num_clients++;
-                ctrl = SUCESSO;
-            }
-        pthread_mutex_unlock(&lock_num_clients);
+            /* Aguarda a conexão do cliente no socket de sincronização */
+            if((new_sync_socket = accept(server_socket_id, (struct sockaddr *) &client_sync_address, &client_len)) != ERRO){
 
-        if(ctrl == SUCESSO){
-    	    /* Aguarda a conexão do cliente no socket principal */
-    		if((new_socket_id = accept(server_socket_id, (struct sockaddr *) &client_address, &client_len)) != ERRO){
+                /* Aloca dinamicamente para armazenar o número do socket e passar para a thread */
+                arg_struct *args = malloc(sizeof(arg_struct *));
+                args->socket_id = new_socket_id;
+                args->sync_socket = new_sync_socket;
 
-                /* Aguarda a conexão do cliente no socket de sincronização */
-                if((new_sync_socket = accept(server_socket_id, (struct sockaddr *) &client_sync_address, &client_len)) != ERRO){
-
-                    /* Aloca dinamicamente para armazenar o número do socket e passar para a thread */
-                    arg_struct *args = malloc(sizeof(arg_struct *));
-                    args->socket_id = new_socket_id;
-                    args->sync_socket = new_sync_socket;
-
-                	/* Se conectou, cria a thread para o cliente, enviando o id do socket */
-                	if(pthread_create( &c_thread, NULL, client_thread, (void *)args) != 0){
-                		printf("[main] ERROR on thread creation.\n");
-                		close(new_socket_id);
-                        close(new_sync_socket);
-                        exit(1);
-                    }
-                }
-                else{
-                    printf("[main] Erro no accept do sync\n");
+            	/* Se conectou, cria a thread para o cliente, enviando o id do socket */
+            	if(pthread_create( &c_thread, NULL, client_thread, (void *)args) != 0){
+            		printf("[main] ERROR on thread creation.\n");
+            		close(new_socket_id);
                     close(new_sync_socket);
                     exit(1);
                 }
             }
             else{
-                printf("[main] Erro no accept\n");
-                close(new_socket_id);
+                printf("[main] Erro no accept do sync\n");
+                close(new_sync_socket);
                 exit(1);
             }
+        }
+        else{
+            printf("[main] Erro no accept\n");
+            close(new_socket_id);
+            exit(1);
         }
     }
 
@@ -532,6 +531,7 @@ void close_connection(char* userid){
     /* Decrementa o número de clientes conectados */
     pthread_mutex_lock(&lock_num_clients);
         num_clients--;
+        printf("[close_connection] Número de clientes conectados: %d\n", num_clients);
     pthread_mutex_unlock(&lock_num_clients);
 
     client* user = findUserInClientsList(clients_list, userid);
