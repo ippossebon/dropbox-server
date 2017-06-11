@@ -3,6 +3,7 @@
 
 #define MAXNAME 32
 #define MAXFILES 256
+#define MAXCLIENTS 5
 #define ERRO -1
 #define SUCESSO 1
 #define BUF_SIZE 256

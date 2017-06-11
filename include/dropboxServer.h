@@ -6,6 +6,7 @@
 #define MAXNAME 32
 #define MAXFILES 256
 #define ERRO -1
+#define MAXCLIENTS 5
 
 void sync_server();
 void receive_file(char *file_name, char* file_data, char *userid);
