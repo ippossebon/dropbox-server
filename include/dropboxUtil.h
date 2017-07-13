@@ -47,6 +47,8 @@ typedef struct arg_struct_sync {
     char userid[MAXNAME];
 } arg_struct_sync;
 
+void showCertificate(const SSL ssl);
+int initializeSSL(SSL_METHOD *method, SSL_CTX *ctx);
 int writeFileToBuffer(char* filename, char* buffer);
 int writeBufferToFile(char* filename, char* buffer);
 char* getClientFolderName(char* client_id);

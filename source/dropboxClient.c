@@ -16,6 +16,9 @@
 char host[128];
 int port;
 char userid[MAXNAME];
+SSL_METHOD *method; //inicializa um ponteiro para armazenar a estrutura do SSL que descreve as funções internas, necessário para criar o contexto
+SSL_CTX *ctx; //ponteiro para a estrutura do contexto
+const SSL ssl; //usado para as funções de descrição e anexação do SSL ao socket
 
 /* Thread para a sincronização do cliente */
 pthread_t s_thread;
@@ -24,6 +27,20 @@ file_node* current_files; //Lista de arquivos no diretório do compartilhado do 
 file_node* real_current_files;
 char sync_dir[255]; //Variável com o nome da pasta sync do usuário
 int sync_socket;
+
+/* Função para anexar o SSL ao socket, recebe o socket */
+int sslIntoSocket(int socket){
+  ssl	=	SSL_new(ctx); //seta o SSL aqui
+	SSL_set_fd(ssl,	socket); //Coloca no socket especificado o ssl
+	if	(SSL_connect(ssl)	==	-1) {
+	  ERR_print_errors_fp(stderr);
+    return ERRO;
+  }
+	else {
+	  /* conexão	aceita	*/
+    return SUCESSO;
+	}			
+}
 
 /* Conecta o cliente com o servidor.
 host – endereço do servidor
