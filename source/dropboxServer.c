@@ -8,6 +8,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <dirent.h>
+/* SSL includes */
+#include <openssl/err.h>
+#include <openssl/ssl.h>
 
 #include "../include/dropboxServer.h"
 #include "../include/dropboxUtil.h"

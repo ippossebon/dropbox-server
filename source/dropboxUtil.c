@@ -268,34 +268,8 @@ void printClientsList(client_node* list) {
    printf("----------------------------------\n");
 }
 
-/* 
-    InitializeSSL é igual para Cliente e Servidor 
-    Recebe SSL_METHOD e SSL_CTX e os altera
-*/
-int initializeSSL(SSL_METHOD *method, SSL_CTX *ctx) {
-    OpenSSL_add_all_algoritms();//adiciona todos algoritmos(digesters e ciphers)
-	SSL_load_error_strings();
-	method	=	SSLv2_client_method();
-	ctx	=	SSL_CTX_new(method); //ponteiro que armazena o contexto
-	if	(ctx	==	NULL){
-		ERR_print_errors_fp(stderr);
-		abort();
-        return ERRO;
-	} else {
-        return SUCESSO;
-    }
-}
-
-/* Mostra certificado */
-void showCertificate(const SSL ssl){
-	X509 *cert;
-    char *line;
-    cert = SSL_get_peer_certificate(ssl);
-    if	(cert	!=	NULL){
-        line =	X509_NAME_oneline(X509_get_subject_name(cert),0,0);
-        printf(“Subject:	%s\n”,	line);
-        free(line);
-        line = X509_NAME_oneline(X509_get_issuer_name(cert),0,0);
-        printf(“Issuer:	%s\n”,	line);
-    }
+void initializeSSL() {
+    SSL_load_error_strings();
+    SSL_library_init();
+    OpenSSL_add_all_algorithms();
 }

@@ -2,6 +2,12 @@
     "files.associations": {
         "string.h": "c",
         "in.h": "c",
-        "dropboxutil.c": "cpp"
+        "dropboxutil.c": "cpp",
+        "pthread.h": "c",
+        "dropboxclient.h": "c",
+        "dropboxserver.h": "c",
+        "dropboxutil.h": "c",
+        "stdio2.h": "c",
+        "asn1.h": "c"
     }
 }
