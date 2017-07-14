@@ -323,6 +323,45 @@ void *sync_thread(void *socket_id){
     return 0;
 }
 
+/*
+Requisita o horário do servidor na forma de um timestamp
+Unix.
+O resultado será usado pela aplicação cliente para calcular
+sua nova referência temporal (a ser utilizada nos registros
+de arquivos)
+*/
+int get_time_server(int socket){
+
+    int num_bytes_read, num_bytes_sent;
+    char buffer[256];
+    char* command = "time#";
+    bzero(buffer, 256);
+
+    /* Pega a hora atual para determinar quanto tempo vai demorar a requisição.*/
+    time_t before_request_time, after_request_time;
+    time(&before_request_time);
+
+    /* Envia o comando time# */
+    num_bytes_sent = write(socket, command, strlen(command));
+    if (num_bytes_sent < 0){
+      printf("[get_time_server] ERROR writing on socket");
+    }
+
+    /* Lê o nome dos arquivos que vem no buffer no formato: file1#file2#file# */
+    num_bytes_read = read(socket, buffer, 256);
+    time(&after_request_time);
+
+    if (num_bytes_read < 0){
+      printf("[get_time_server] ERROR reading from socket");
+    }
+
+    // now = time (NULL);
+    // after_request_time = localtime (&now);
+
+    printf("Timestamp que veio do server: %s\n", buffer);
+    return 0;
+}
+
 
 int main(int argc, char *argv[]){
   int socket_id;
@@ -427,6 +466,9 @@ int main(int argc, char *argv[]){
       }
       else if( strcmp("list", command) == 0){
         list(buffer, socket_id);
+      }
+      else if (strcmp("time", command) == 0){
+          get_time_server(socket_id);
       }
       else if( strcmp("exit", command) == 0){
         close_connection(buffer, socket_id);

@@ -15,5 +15,6 @@ int auth(int socket, char* userid);
 void close_connection(char* buffer, int socket);
 int get_sync_dir();
 void *sync_thread(void*);
+int get_time_server(int socket);
 
 #endif

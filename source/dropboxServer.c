@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <dirent.h>
+#include <time.h>
 
 #include "../include/dropboxServer.h"
 #include "../include/dropboxUtil.h"
@@ -56,6 +57,9 @@ void sync_server(int sync_socket, char* userid){
     bzero(buffer, BUF_SIZE);
     char* full_path = getClientFolderName(userid);
 
+    /* real_current_files corresponde aos arquivos que estão na pasta do cliente,
+    no servidor, no momento atual. Estes arquivos serão comparados com os outros,
+    para verificar possíveis modificações. */
     pthread_mutex_lock(&mutex_client_files);
     file_node* real_current_files = fn_create_from_path(full_path);
     pthread_mutex_unlock(&mutex_client_files);
@@ -274,6 +278,8 @@ int auth(int socket, char* userid){
 		new_client->devices[1] = 0;
         pthread_mutex_unlock(&mutex_devices);
 
+        /* fn_create_from_path() inicializa uma lista com os arquivos contidos
+        na pasta deste cliente no servidor. */
         pthread_mutex_lock(&mutex_client_files);
         new_client->files = fn_create_from_path(dir_client);
         pthread_mutex_unlock(&mutex_client_files);
@@ -338,6 +344,7 @@ void receive_command_client(int socket, char *userid){
         UPLOAD: upload#filename#conteudo_do_arquivo
         LIST: list#
         GET_SYNC_DIR: get_sync_dir#
+        TIME: time#
         EXIT: exit# */
 	    num_bytes_read = read(socket, buffer, BUF_SIZE);
 
@@ -372,6 +379,9 @@ void receive_command_client(int socket, char *userid){
         }
         else if (strcmp("delete", command) == 0){
             //deleteLocalFile(file_name);
+        }
+        else if (strcmp("time", command) == 0){
+            send_time(socket);
         }
         else if(strcmp("exit", command) == 0){
             close_connection(userid);
@@ -447,6 +457,49 @@ void *client_thread(void *new_sockets){
     free(new_sockets);
 
 	return 0;
+}
+
+void send_time(int socket){
+    time_t now;
+    struct tm *local_time;
+    char timestamp[30];
+    bzero(timestamp, 30);
+
+    now = time (NULL);
+    local_time = localtime (&now);
+
+    /* Coloca a data no formato: aaaa.mm.dd hh:mm:ss */
+    char seconds[2];
+    sprintf(seconds, "%d", local_time->tm_sec);
+    char minutes[2];
+    sprintf(minutes, "%d", local_time->tm_min);
+    char hour[2];
+    sprintf(hour, "%d", local_time->tm_hour);
+    char day[2];
+    sprintf(day, "%d", local_time->tm_mday);
+    char month[2];
+    sprintf(month, "%d", local_time->tm_mon);
+    char year[2];
+    sprintf(year, "%d", local_time->tm_year + 1900);
+
+    strcat(timestamp, year);
+    strcat(timestamp, ".");
+    strcat(timestamp, month);
+    strcat(timestamp, ".");
+    strcat(timestamp, day);
+    strcat(timestamp, " ");
+    strcat(timestamp, hour);
+    strcat(timestamp, ":");
+    strcat(timestamp, minutes);
+    strcat(timestamp, ":");
+    strcat(timestamp, seconds);
+    printf("timestamp %s\n", timestamp);
+
+    int n;
+    n = write(socket, timestamp, 30);
+    if (n < 0){
+        printf("[sendTime] Erro ao escrever timestamp no socket\n");
+    }
 }
 
 
@@ -589,8 +642,9 @@ void close_connection(char* userid){
 
     /*Se não estiver logado em nenhum outro dispositivo, retira o usuário da lista.*/
     if (user->devices[0] == 0 && user->devices[1] == 0){
-        user->logged_in = 0;
+        pthread_mutex_lock(&mutex_clients_list);
         clients_list = removeClientFromList(clients_list, userid);
+        pthread_mutex_unlock(&mutex_clients_list);
     }
 
     pthread_mutex_unlock(&mutex_devices);
