@@ -8,9 +8,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <dirent.h>
-/* SSL includes */
-#include <openssl/err.h>
-#include <openssl/ssl.h>
 
 #include "../include/dropboxServer.h"
 #include "../include/dropboxUtil.h"
@@ -25,9 +22,6 @@ pthread_mutex_t lock_num_clients;
 pthread_mutex_t mutex_clients_list;
 pthread_mutex_t mutex_devices;
 pthread_mutex_t mutex_client_files;
-/* SSL */
-SSL_CTX *ctx; //ponteiro para a estrutura do contexto
-SSL *ssl;
 
 /* Recebe as modificações que foram feitas localmente pelo cliente */
 void sync_client(int sync_socket, char* userid){
@@ -460,10 +454,19 @@ int main(int argc, char *argv[]){
 	int server_socket_id, new_socket_id, new_sync_socket;
     struct sockaddr_in server_address, client_address, client_sync_address;
 	socklen_t client_len;
+    /* SSL Sync */
+    SSL_CTX *ctx_sync; //ponteiro para a estrutura do contexto do sync
+    SSL *ssl_sync;
+    /* SSL Cmd */
+    SSL_CTX *ctx_cmd; //ponteiro para a estrutura do contexto dos comandos
+    SSL *ssl_cmd;
+    
     /* SSL carrega certificados */
-    int cert = SSL_CTX_use_certificate_file(ctx, "CertFile.pem", SSL_FILETYPE_PEM);
-    int cert2 = SSL_CTX_use_PrivateKey_file(ctx, "KeyFile.pem", SSL_FILETYPE_PEM);
-
+    SSL_CTX_use_certificate_file(ctx_sync, "CertFile.pem", SSL_FILETYPE_PEM);
+    SSL_CTX_use_PrivateKey_file(ctx_sync, "KeyFile.pem", SSL_FILETYPE_PEM);
+    SSL_CTX_use_certificate_file(ctx_cmd, "CertFile.pem", SSL_FILETYPE_PEM);
+    SSL_CTX_use_PrivateKey_file(ctx_cmd, "KeyFile.pem", SSL_FILETYPE_PEM);
+    
     /* Inicializa mutex */
     if (pthread_mutex_init(&mutex_devices, NULL) != 0){
         printf("[main] ERRO na inicialização do mutex_devices\n");
@@ -527,27 +530,37 @@ int main(int argc, char *argv[]){
 
             /* 
                 SSL Handshake 
-                Comentei aqui para fazer amanhã
+                Socket de comando
             */
-            // ssl	= SSL_new(ctx);
-            // SSL_set_fd(ssl,	new_socket_id);
-            // int ssl_err = SSL_accept(ssl);
+            ssl_cmd	= SSL_new(ctx_cmd);
+            SSL_set_fd(ssl_cmd,	new_socket_id);
+            int ssl_err = SSL_accept(ssl_cmd);
+            if(ssl_err <= 0)
+            {
+                //Erro aconteceu, fecha o SSL
+            }
 
             /* Aguarda a conexão do cliente no socket de sincronização */
             if((new_sync_socket = accept(server_socket_id, (struct sockaddr *) &client_sync_address, &client_len)) != ERRO){
 
                 /*  
                     SSL Handshake 
-                    Comentei aqui para fazer amanhã
+                    Socket de Sync
                 */
-                // ssl	= SSL_new(ctx);
-                // SSL_set_fd(ssl,	new_sync_socket);
-                // int ssl_err = SSL_accept(ssl);
+                ssl_sync = SSL_new(ctx_sync);
+                SSL_set_fd(ssl_sync, new_sync_socket);
+                int ssl_err = SSL_accept(ssl_sync);
+                if(ssl_err <= 0)
+                {
+                    //Erro aconteceu, fecha o SSL
+                }
 
                 /* Aloca dinamicamente para armazenar o número do socket e passar para a thread */
                 arg_struct *args = malloc(sizeof(arg_struct *));
                 args->socket_id = new_socket_id;
                 args->sync_socket = new_sync_socket;
+                args->ssl_sync = ssl_sync; //modificado para ter os respectivos ssl's
+                args->ssl_cmd = ssl_cmd; //modificado para ter os respectivos ssl's
 
             	/* Se conectou, cria a thread para o cliente, enviando o id do socket */
             	if(pthread_create( &c_thread, NULL, client_thread, (void *)args) != 0){

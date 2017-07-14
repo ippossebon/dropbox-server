@@ -11,9 +11,6 @@
 #include <errno.h>
 #include <libgen.h>
 #include <sys/stat.h>
-/* SSL includes */
-#include <openssl/err.h>
-#include <openssl/ssl.h>
 
 /* Globais */
 char host[128];
@@ -396,7 +393,6 @@ int main(int argc, char *argv[]){
   initializeSSL();
   createMethodCTXCmd();
   createMethodCTXSync();
-  
 
   /* Testa se todos os argumentos foram informados ao executar o cliente */
   if (argc < 4) {

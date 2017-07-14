@@ -8,9 +8,6 @@
 #include <netinet/in.h>
 #include <dirent.h>
 #include <time.h>
-/* SSL includes */
-#include <openssl/err.h>
-#include <openssl/ssl.h>
 
 #include "../include/dropboxUtil.h"
 
