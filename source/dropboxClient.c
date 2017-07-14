@@ -391,8 +391,8 @@ int main(int argc, char *argv[]){
 
   /* Configurando SSL */
   initializeSSL();
-  createMethodCTXCmd();
-  createMethodCTXSync();
+  //createMethodCTXCmd();
+  //createMethodCTXSync();
 
   /* Testa se todos os argumentos foram informados ao executar o cliente */
   if (argc < 4) {
@@ -403,7 +403,7 @@ int main(int argc, char *argv[]){
   strcpy (userid, argv[1]);
   strcpy(host, argv[2]);
   port = atoi(argv[3]);
-
+  printf("Tentando conectar: %s %s %d\n", userid, host, port);
   /* Conecta ao servidor com o endereço e porta informados, retornando o socket_id */
   socket_id = connect_server(host, port);
 

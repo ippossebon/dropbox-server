@@ -454,19 +454,40 @@ int main(int argc, char *argv[]){
 	int server_socket_id, new_socket_id, new_sync_socket;
     struct sockaddr_in server_address, client_address, client_sync_address;
 	socklen_t client_len;
+    printf("starting SSL..\n");
+    /* Inicializando o SSL */
+    initializeSSL();
     /* SSL Sync */
+    SSL_METHOD *method_sync;
     SSL_CTX *ctx_sync; //ponteiro para a estrutura do contexto do sync
     SSL *ssl_sync;
     /* SSL Cmd */
+    SSL_METHOD *method_cmd; 
     SSL_CTX *ctx_cmd; //ponteiro para a estrutura do contexto dos comandos
     SSL *ssl_cmd;
-    
+
+    //transformar em funções depois
+    method_cmd = SSLv23_client_method();
+    ctx_cmd = SSL_CTX_new(method_cmd);
+    if (ctx_cmd == NULL) {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+    //transformar em funções depois
+    method_sync = SSLv23_client_method();
+    ctx_sync = SSL_CTX_new(method_sync);
+    if (ctx_sync == NULL) {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+
+    printf("setting certificate and privatekey..\n");
     /* SSL carrega certificados */
     SSL_CTX_use_certificate_file(ctx_sync, "CertFile.pem", SSL_FILETYPE_PEM);
     SSL_CTX_use_PrivateKey_file(ctx_sync, "KeyFile.pem", SSL_FILETYPE_PEM);
     SSL_CTX_use_certificate_file(ctx_cmd, "CertFile.pem", SSL_FILETYPE_PEM);
     SSL_CTX_use_PrivateKey_file(ctx_cmd, "KeyFile.pem", SSL_FILETYPE_PEM);
-    
+    printf("Finished..\n");
     /* Inicializa mutex */
     if (pthread_mutex_init(&mutex_devices, NULL) != 0){
         printf("[main] ERRO na inicialização do mutex_devices\n");
@@ -521,13 +542,13 @@ int main(int argc, char *argv[]){
 
     /* Zero clientes conectados */
     num_clients = 0;
-
+    printf("Before while\n");
 	/* Laço que fica aguardando conexões de clientes e criandos as threads*/
 	while(1){
 
 	    /* Aguarda a conexão do cliente no socket principal */
 		if((new_socket_id = accept(server_socket_id, (struct sockaddr *) &client_address, &client_len)) != ERRO){
-
+            printf("entrou no accept\n");
             /* 
                 SSL Handshake 
                 Socket de comando

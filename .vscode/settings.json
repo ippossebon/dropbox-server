@@ -12,6 +12,8 @@
         "ssl.h": "c",
         "x509_vfy.h": "c",
         "x509.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "dsa.h": "c",
+        "ecdsa.h": "c"
     }
 }
