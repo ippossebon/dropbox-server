@@ -25,6 +25,9 @@ pthread_mutex_t lock_num_clients;
 pthread_mutex_t mutex_clients_list;
 pthread_mutex_t mutex_devices;
 pthread_mutex_t mutex_client_files;
+/* SSL */
+SSL_CTX *ctx; //ponteiro para a estrutura do contexto
+SSL *ssl;
 
 /* Recebe as modificações que foram feitas localmente pelo cliente */
 void sync_client(int sync_socket, char* userid){
@@ -457,6 +460,9 @@ int main(int argc, char *argv[]){
 	int server_socket_id, new_socket_id, new_sync_socket;
     struct sockaddr_in server_address, client_address, client_sync_address;
 	socklen_t client_len;
+    /* SSL carrega certificados */
+    int cert = SSL_CTX_use_certificate_file(ctx, "CertFile.pem", SSL_FILETYPE_PEM);
+    int cert2 = SSL_CTX_use_PrivateKey_file(ctx, "KeyFile.pem", SSL_FILETYPE_PEM);
 
     /* Inicializa mutex */
     if (pthread_mutex_init(&mutex_devices, NULL) != 0){
@@ -519,8 +525,24 @@ int main(int argc, char *argv[]){
 	    /* Aguarda a conexão do cliente no socket principal */
 		if((new_socket_id = accept(server_socket_id, (struct sockaddr *) &client_address, &client_len)) != ERRO){
 
+            /* 
+                SSL Handshake 
+                Comentei aqui para fazer amanhã
+            */
+            // ssl	= SSL_new(ctx);
+            // SSL_set_fd(ssl,	new_socket_id);
+            // int ssl_err = SSL_accept(ssl);
+
             /* Aguarda a conexão do cliente no socket de sincronização */
             if((new_sync_socket = accept(server_socket_id, (struct sockaddr *) &client_sync_address, &client_len)) != ERRO){
+
+                /*  
+                    SSL Handshake 
+                    Comentei aqui para fazer amanhã
+                */
+                // ssl	= SSL_new(ctx);
+                // SSL_set_fd(ssl,	new_sync_socket);
+                // int ssl_err = SSL_accept(ssl);
 
                 /* Aloca dinamicamente para armazenar o número do socket e passar para a thread */
                 arg_struct *args = malloc(sizeof(arg_struct *));

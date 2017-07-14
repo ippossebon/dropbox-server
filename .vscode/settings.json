@@ -8,6 +8,10 @@
         "dropboxserver.h": "c",
         "dropboxutil.h": "c",
         "stdio2.h": "c",
-        "asn1.h": "c"
+        "asn1.h": "c",
+        "ssl.h": "c",
+        "x509_vfy.h": "c",
+        "x509.h": "c",
+        "stdio.h": "c"
     }
 }

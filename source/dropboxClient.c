@@ -19,9 +19,12 @@
 char host[128];
 int port;
 char userid[MAXNAME];
-SSL_METHOD *method; //inicializa um ponteiro para armazenar a estrutura do SSL que descreve as funções internas, necessário para criar o contexto
-SSL_CTX *ctx; //ponteiro para a estrutura do contexto
-SSL *ssl; //usado para as funções de descrição e anexação do SSL ao socket
+SSL_METHOD *method_sync; //inicializa um ponteiro para armazenar a estrutura do SSL que descreve as funções internas, necessário para criar o contexto
+SSL_METHOD *method_cmd; 
+SSL_CTX *ctx_sync; //ponteiro para a estrutura do contexto
+SSL_CTX *ctx_cmd; //ponteiro para a estrutura do contexto
+SSL *ssl_sync; //usado para as funções de descrição e anexação do SSL ao socket
+SSL *ssl_cmd; //usado para as funções de descrição e anexação do SSL ao socket
 
 /* Thread para a sincronização do cliente */
 pthread_t s_thread;
@@ -233,16 +236,36 @@ void sync_server(){
     current_files = fn_create_from_path(sync_dir);
 }
 
-void insertSSLIntoSocket(int client_socket) {
-  ssl = SSL_new(ctx);
-  SSL_set_fd(ssl, client_socket);
-  if (SSL_connect(ssl) == -1)
+void insertSSLIntoSocketSync(int socket) {
+  ssl_sync = SSL_new(ctx_sync);
+  SSL_set_fd(ssl_sync, socket);
+  if (SSL_connect(ssl_sync) == -1)
       ERR_print_errors_fp(stderr);
   else {
       //GG
       X509 *cert;
       char *line;
-      cert = SSL_get_peer_certificate(ssl);
+      cert = SSL_get_peer_certificate(ssl_sync);
+      if (cert != NULL) {
+          line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
+          printf("Subject: %s\n", line);
+          free(line);
+          line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
+          printf("Issuer: %s\n", line);
+      }
+  }
+}
+
+void insertSSLIntoSocketCmd(int socket) {
+  ssl_cmd = SSL_new(ctx_cmd);
+  SSL_set_fd(ssl_cmd, socket);
+  if (SSL_connect(ssl_cmd) == -1)
+      ERR_print_errors_fp(stderr);
+  else {
+      //GG
+      X509 *cert;
+      char *line;
+      cert = SSL_get_peer_certificate(ssl_cmd);
       if (cert != NULL) {
           line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
           printf("Subject: %s\n", line);
@@ -348,17 +371,32 @@ void *sync_thread(void *socket_id){
     return 0;
 }
 
+void createMethodCTXSync() {
+  method_sync = SSLv23_client_method();
+  ctx_sync = SSL_CTX_new(method_sync);
+  if (ctx_sync == NULL) {
+      ERR_print_errors_fp(stderr);
+      abort();
+  }
+}
+
+void createMethodCTXCmd() {
+  method_cmd = SSLv23_client_method();
+  ctx_cmd = SSL_CTX_new(method_cmd);
+  if (ctx_cmd == NULL) {
+      ERR_print_errors_fp(stderr);
+      abort();
+  }
+}
+
 int main(int argc, char *argv[]){
   int socket_id;
 
   /* Configurando SSL */
   initializeSSL();
-  method = SSLv23_client_method();
-  ctx = SSL_CTX_new(method);
-  if (ctx == NULL) {
-      ERR_print_errors_fp(stderr);
-      abort();
-  }
+  createMethodCTXCmd();
+  createMethodCTXSync();
+  
 
   /* Testa se todos os argumentos foram informados ao executar o cliente */
   if (argc < 4) {
@@ -379,7 +417,7 @@ int main(int argc, char *argv[]){
   }
 
   /* inserindo SSL no socket */
-  insertSSLIntoSocket(socket_id);
+  insertSSLIntoSocketCmd(socket_id);
 
   /* Conecta ao servidor com o endereço e porta informados, retornando o sync_socket */
   sync_socket = connect_server(host, port);
@@ -390,7 +428,7 @@ int main(int argc, char *argv[]){
   }
 
   /* inserindo SSL no socket */
-  insertSSLIntoSocket(sync_socket);
+  insertSSLIntoSocketSync(sync_socket);
 
   int user_auth = auth(socket_id, userid);
   int sync_dir_checked = check_sync_dir();
