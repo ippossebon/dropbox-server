@@ -49,6 +49,7 @@ typedef struct arg_struct {
 /* Estrutura para armazenar os sockets a serem passados pra thread de sync*/
 typedef struct arg_struct_sync {
     int sync_socket;
+    SSL *ssl_sync;
     char userid[MAXNAME];
 } arg_struct_sync;
 

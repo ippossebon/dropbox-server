@@ -31,9 +31,11 @@ file_node* real_current_files;
 char sync_dir[255]; //Variável com o nome da pasta sync do usuário
 int sync_socket;
 
-/* Conecta o cliente com o servidor.
-host – endereço do servidor
-port – porta aguardando conexão */
+/* 
+  Conecta o cliente com o servidor.
+  host – endereço do servidor
+  port – porta aguardando conexão 
+*/
 int connect_server(char *host, int port){
   int socket_id;
   struct sockaddr_in server_address;
@@ -66,14 +68,14 @@ int connect_server(char *host, int port){
 
 
 /* Avisar o servidor que o cliente está encerrando. */
-void close_connection(char* buffer, int socket){
+void close_connection(char* buffer, SSL *ssl){
   /* Mata a thread de sincronização */
   pthread_cancel(s_thread);
 
   /* Envia conteúdo do buffer pelo socket */
   int num_bytes_sent;
   int buffer_size = strlen(buffer);
-  num_bytes_sent = write(socket, buffer, buffer_size);
+  num_bytes_sent = SSL_write(ssl, buffer, buffer_size);
 
   if (num_bytes_sent < 0){
     printf("ERROR writing to socket\n");
@@ -84,7 +86,7 @@ void close_connection(char* buffer, int socket){
 executada quando for realizar upload de um arquivo.
 file – path/filename.ext do arquivo a ser enviado
 UPLOAD */
-void send_file(char *file, char* buffer, int socket){
+void send_file(char *file, char* buffer, SSL *ssl){
 
   int aux;
 
@@ -95,7 +97,7 @@ void send_file(char *file, char* buffer, int socket){
 
   /* Envia conteúdo do buffer pelo socket */
   int num_bytes_sent;
-  num_bytes_sent = write(socket, buffer, BUF_SIZE);
+  num_bytes_sent = SSL_write(ssl, buffer, BUF_SIZE);
 
   if (num_bytes_sent < 0){
     printf("ERROR writing to socket\n");
@@ -107,12 +109,12 @@ void send_file(char *file, char* buffer, int socket){
 Deverá ser executada quando for realizar download de um arquivo.
 file –filename.ext
 DOWNLOAD */
-void get_file(char *file, int socket){
+void get_file(char *file, SSL *ssl){
     int num_bytes_read;
     char buffer[BUF_SIZE];
     bzero(buffer, BUF_SIZE);
 
-    num_bytes_read = read(socket, buffer, BUF_SIZE);
+    num_bytes_read = SSL_read(ssl, buffer, BUF_SIZE);
 
     if (num_bytes_read < 0){
         printf("ERROR reading from socket");
@@ -131,7 +133,7 @@ void sync_client(){
   bzero(buffer, BUF_SIZE);
   strcpy(buffer, "start client sync");
 
-  write(sync_socket, buffer, BUF_SIZE);
+  SSL_write(ssl_sync, buffer, BUF_SIZE);
 
   /* Aqui estará a nova lista com os arquivos atuais/reais */
   real_current_files = fn_create_from_path(sync_dir);
@@ -155,7 +157,7 @@ void sync_client(){
       /* Deve enviar o arquivo para o servidor. Análogo a uma operação UPLOAD.*/
       bzero(buffer, BUF_SIZE);
       sprintf(buffer, "upload#%s", node->data->name);
-      write(sync_socket, buffer, BUF_SIZE);
+      SSL_write(ssl_sync, buffer, BUF_SIZE);
 
       char send_file_buffer[BUF_SIZE];
       bzero(send_file_buffer, BUF_SIZE);
@@ -163,7 +165,7 @@ void sync_client(){
       char full_path[500];
       sprintf(full_path, "%s/%s", sync_dir, node->data->name);
 
-      send_file(full_path, send_file_buffer, sync_socket);
+      send_file(full_path, send_file_buffer, ssl_sync);
     }
 
   }
@@ -178,7 +180,7 @@ void sync_client(){
     if(old_file == NULL){ //nao encontrou o arquivo = deletado
         bzero(buffer, BUF_SIZE);
         sprintf(buffer, "delete#%s", node->data->name);
-        write(sync_socket, buffer, BUF_SIZE);
+        SSL_write(ssl_sync, buffer, BUF_SIZE);
     }
   }
 
@@ -189,7 +191,7 @@ void sync_client(){
   /* Avisa o servidor que terminou de fazer o seu sync. */
   bzero(buffer, BUF_SIZE);
   strcat(buffer, "end client sync");
-  write(sync_socket, buffer, BUF_SIZE);
+  SSL_write(ssl_sync, buffer, BUF_SIZE);
 }
 
 /* Recebe as modificações que foram feitas localmente pelo server */
@@ -205,11 +207,11 @@ void sync_server(){
         strcat(buffer, node->data->last_modified);
         strcat(buffer, "#");
     }
-    write(sync_socket, buffer, BUF_SIZE);
+    SSL_write(ssl_sync, buffer, BUF_SIZE);
 
     while(1){
         bzero(buffer, BUF_SIZE);
-        read(sync_socket, buffer, BUF_SIZE);
+        SSL_read(ssl_sync, buffer, BUF_SIZE);
         if(strcmp(buffer, "end server sync")== 0){
             break;
         }
@@ -224,7 +226,7 @@ void sync_server(){
         }else if(strcmp(command, "upload")==0){
             char full_path[500];
             sprintf(full_path, "%s/%s", sync_dir, file_name);
-            get_file(full_path, sync_socket);
+            get_file(full_path, ssl_sync);
         }
     }
 
@@ -273,18 +275,18 @@ void insertSSLIntoSocketCmd(int socket) {
   }
 }
 
-void list(char* line, int socket){
+void list(char* line, SSL *ssl){
   int num_bytes_read, num_bytes_sent;
   char buffer[256];
   bzero(buffer, 256);
 
-  num_bytes_sent = write(socket, line, strlen(line)); //enviar o #list#
+  num_bytes_sent = SSL_write(ssl, line, strlen(line)); //enviar o #list#
   if (num_bytes_sent < 0){
     printf("[list] ERROR writing from socket");
   }
 
   /* Lê o nome dos arquivos que vem no buffer no formato: file1#file2#file# */
-  num_bytes_read = read(socket, buffer, 256);
+  num_bytes_read = SSL_read(ssl, buffer, 256);
 
   if (num_bytes_read < 0){
     printf("[list] ERROR reading from socket");
@@ -304,14 +306,14 @@ void list(char* line, int socket){
 }
 
 
-int auth(int socket, char* userid){
+int auth(SSL *ssl, char* userid){
   printf("Realizando verificação de usuário... \n\n");
 
   int num_bytes_sent, num_bytes_read;
   int buffer_size = strlen(userid);
   char buffer[256];
 
-  num_bytes_sent = write(socket, userid, buffer_size);
+  num_bytes_sent = SSL_write(ssl, userid, buffer_size);
 
   if (num_bytes_sent < 0){
     printf("[auth] ERROR writing on socket\n");
@@ -319,7 +321,7 @@ int auth(int socket, char* userid){
   }
 
   bzero(buffer, 256);
-  num_bytes_read = read(socket, buffer, 256);
+  num_bytes_read = SSL_read(ssl, buffer, 256);
 
   if (num_bytes_read < 0){
     printf("[auth] ERROR reading on socket\n");
@@ -426,7 +428,7 @@ int main(int argc, char *argv[]){
   /* inserindo SSL no socket */
   insertSSLIntoSocketSync(sync_socket);
 
-  int user_auth = auth(socket_id, userid);
+  int user_auth = auth(ssl_cmd, userid);
   int sync_dir_checked = check_sync_dir();
 
   /* Se o usuário está OK, então pode executar ações */
@@ -490,19 +492,19 @@ int main(int argc, char *argv[]){
 
       /* Realiza a operação solicitada */
       if( strcmp("upload", command) == 0){
-        send_file(fileName, buffer, socket_id);
+        send_file(fileName, buffer, ssl_cmd);
       }
       else if( strcmp("download", command) == 0){
-        if (write(socket_id, buffer, strlen(buffer)) < 0){
+        if (SSL_write(ssl_cmd, buffer, strlen(buffer)) < 0){
             printf("ERROR writing from socket");
         }
-        get_file(fileName, socket_id);
+        get_file(fileName, ssl_cmd);
       }
       else if( strcmp("list", command) == 0){
-        list(buffer, socket_id);
+        list(buffer, ssl_cmd);
       }
       else if( strcmp("exit", command) == 0){
-        close_connection(buffer, socket_id);
+        close_connection(buffer, ssl_cmd);
         break;
       }
       else{
