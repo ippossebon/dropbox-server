@@ -15,6 +15,7 @@ int auth(int socket, char* userid);
 void close_connection(char* buffer, int socket);
 int get_sync_dir();
 void *sync_thread(void*);
-int get_timestamp_server(int socket);
+char* get_timestamp_server(int socket);
+file_node* fn_create_from_path_server_time(char* path, int socket);
 
 #endif

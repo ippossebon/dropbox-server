@@ -462,8 +462,8 @@ void *client_thread(void *new_sockets){
 void send_time(int socket){
     time_t now;
     struct tm *local_time;
-    char timestamp[30];
-    bzero(timestamp, 30);
+    char timestamp[36];
+    bzero(timestamp, 36);
 
     now = time (NULL);
     local_time = localtime (&now);
@@ -496,7 +496,7 @@ void send_time(int socket){
     printf("timestamp %s\n", timestamp);
 
     int n;
-    n = write(socket, timestamp, 30);
+    n = write(socket, timestamp, 36);
     if (n < 0){
         printf("[sendTime] Erro ao escrever timestamp no socket\n");
     }

@@ -8,10 +8,13 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include "../include/dropboxUtil.h"
+#include "../include/dropboxClient.h"
 #include <errno.h>
 #include <libgen.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <dirent.h>
+
 
 /* Globais */
 char host[128];
@@ -118,7 +121,7 @@ void get_file(char *file, int socket){
 
 /* Sincroniza o diretório “sync_dir_<nomeusuário>” com
 o servidor */
-void sync_client(){
+void sync_client(int commands_socket){
 
   /* Informa ao server que vai sincronizar (avisa quais foram as modificações
   realizadas localmente)*/
@@ -129,7 +132,7 @@ void sync_client(){
   write(sync_socket, buffer, BUF_SIZE);
 
   /* Aqui estará a nova lista com os arquivos atuais/reais */
-  real_current_files = fn_create_from_path(sync_dir);
+  real_current_files = (file_node*) fn_create_from_path_server_time(sync_dir, commands_socket);
   file_node* node;
 
   /* Para cada arquivo "real/nova" bucamos na lista "antiga" se ele existe.
@@ -188,7 +191,7 @@ void sync_client(){
 }
 
 /* Recebe as modificações que foram feitas localmente pelo server */
-void sync_server(){
+void sync_server(int commands_socket){
 
     char buffer[BUF_SIZE];
     bzero(buffer, BUF_SIZE);
@@ -225,7 +228,7 @@ void sync_server(){
 
     // A current está atualizando para que não dar erro.
     fn_clear(current_files);
-    current_files = fn_create_from_path(sync_dir);
+    current_files = fn_create_from_path_server_time(sync_dir, commands_socket);
 }
 
 
@@ -311,13 +314,18 @@ int check_sync_dir(){
 }
 
 
-void *sync_thread(void *socket_id){
+void *sync_thread(void *sockets){
     /* Uns casts muito loucos */
-	sync_socket = *((int *) socket_id);
+	//sync_socket = *((int *) socket_id);
+
+    /* Uns casts muito loucos */
+    arg_struct *args = sockets;
+	int socket_id = args->socket_id;
+    sync_socket = args->sync_socket;
 
     while(1){
-        sync_client();
-        sync_server();
+        sync_client(socket_id);
+        sync_server(socket_id);
         sleep(10);
     }
 
@@ -361,14 +369,11 @@ char* get_timestamp_server(int socket){
     now = time (NULL);
     after_request_time = localtime (&now);
 
-    printf("Timestamp que veio do server: %s\n", buffer);
+    //printf("Timestamp que veio do server: %s\n", buffer);
 
     struct tm *time_server = malloc(sizeof(struct tm));
     strptime(buffer, "%Y.%m.%d %H:%M:%S", time_server);
     time_server->tm_mon += 1; // não sei por que
-
-    printf("Timestamp struct do server: %d.%d.%d %d:%d:%d\n", time_server->tm_year,
-        time_server->tm_mon, time_server->tm_mday, time_server->tm_hour, time_server->tm_min, time_server->tm_sec);
 
     /* Aplica a fórmula T_cliente = T_servidor + (T1 - t0)/2*/
     double delta_time = difftime(mktime(after_request_time), mktime(before_request_time));
@@ -379,8 +384,10 @@ char* get_timestamp_server(int socket){
     time_client = localtime(&new_time);
 
     /* Coloca a data no formato: aaaa.mm.dd hh:mm:ss */
-    char timestamp[30];
-    bzero(timestamp, 30);
+    char *timestamp = malloc(sizeof(char) * 36);
+    bzero(timestamp, 36);
+
+    time_client->tm_hour += 1; // não sei por que, tá louco
 
     char seconds[2];
     sprintf(seconds, "%d", time_client->tm_sec);
@@ -407,11 +414,48 @@ char* get_timestamp_server(int socket){
     strcat(timestamp, ":");
     strcat(timestamp, seconds);
 
-    printf("Hora final no cliente: %s\n", timestamp);
+    //printf("Timestamp final no cliente: %s\n", timestamp);
 
-    return 0;
+    return timestamp;
 }
 
+/* Cria um file_set a partir dos arquivos de um caminho indicado por path,
+utilizando o timestamp recebido do servidor, sobre o algoritmo de Cristian.
+*/
+file_node* fn_create_from_path_server_time(char* path, int socket) {
+
+   file_node* list = fn_create();
+
+   DIR* d = opendir(path);
+   if (d) {
+      struct dirent *dir;
+      while ((dir = readdir(d)) != NULL) {
+         if (dir->d_type == DT_REG) { //verifica se é um arquivo
+            char* filename = dir->d_name;
+            struct stat attr; //Essa estrutura armazena os atributos do arquivo
+            char fullpath[256];
+            sprintf(fullpath, "%s/%s",path,filename);
+            if (stat(fullpath,&attr)) {
+               perror(fullpath);
+               exit(-1);
+            } else {
+               //Adiciona um file_info a lista
+               file_info* file = malloc(sizeof(file_info));
+               strcpy(file->name, filename);
+
+               /* Pega o horário atualizado de acordo com o horário do server. */
+               char *timestamp = get_timestamp_server(socket);
+               strcpy(file->last_modified, timestamp);
+               file->size = (int)attr.st_size;
+               strcpy(file->extension, "unknown"); //TODO arrumer isso para pegar a extensão do arquivo se houver
+               list = fn_add(list,file);
+            }
+         }
+      }
+      closedir(d);
+   }
+   return list;
+}
 
 int main(int argc, char *argv[]){
   int socket_id;
@@ -449,11 +493,15 @@ int main(int argc, char *argv[]){
   if(user_auth == SUCESSO && sync_dir_checked == SUCESSO){
 
       /* Aloca dinamicamente para armazenar o número do socket e passar para a thread */
-    	int *arg = malloc(sizeof(*arg));
-    	*arg = sync_socket;
+    	//int *arg = malloc(sizeof(*arg));
+    	//*arg = sync_socket;
+        /* Aloca dinamicamente para armazenar o número do socket e passar para a thread */
+        struct arg_struct *args = malloc(sizeof(arg_struct *));
+        args->socket_id = socket_id;
+        args->sync_socket = sync_socket;
 
     /* Cria a thread de sincronização */
-    if(pthread_create( &s_thread, NULL, sync_thread, arg) != 0){
+    if(pthread_create( &s_thread, NULL, sync_thread, (void *)args) != 0){
       printf("[main] ERROR on thread creation.\n");
       close(sync_socket);
       exit(1);
@@ -468,7 +516,7 @@ int main(int argc, char *argv[]){
     strcat(sync_dir, userid);
     printf("Seu diretório sincronizado é [%s]\n",sync_dir);
     //Monta a lista inicial de arquivos do diretório
-    current_files = fn_create_from_path(sync_dir);
+    current_files = (file_node*) fn_create_from_path_server_time(sync_dir, socket_id);
     fn_print(current_files);
     char buffer[256];
     printf("\n**************************************\n");
