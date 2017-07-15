@@ -1,0 +1,22 @@
+{
+    "files.associations": {
+        "string.h": "c",
+        "in.h": "c",
+        "dropboxutil.c": "cpp",
+        "pthread.h": "c",
+        "dropboxclient.h": "c",
+        "dropboxserver.h": "c",
+        "dropboxutil.h": "c",
+        "stdio2.h": "c",
+        "asn1.h": "c",
+        "ssl.h": "c",
+        "x509_vfy.h": "c",
+        "x509.h": "c",
+        "stdio.h": "c",
+        "dsa.h": "c",
+        "ecdsa.h": "c",
+        "stdlib.h": "c",
+        "unistd.h": "c",
+        "string2.h": "c"
+    }
+}

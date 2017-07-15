@@ -4,7 +4,7 @@ INC_DIR=./include/
 BIN_DIR=./bin/
 S_DIR=./server/
 C_DIR=./client/
-FLAGS= -pthread -g -Wall
+FLAGS= -pthread -g -Wall -lssl -lcrypto
 
 all: utilities server client
 

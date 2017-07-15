@@ -25,12 +25,12 @@ pthread_mutex_t mutex_devices;
 pthread_mutex_t mutex_client_files;
 
 /* Recebe as modificações que foram feitas localmente pelo cliente */
-void sync_client(int sync_socket, char* userid){
+void sync_client(SSL *ssl, char* userid){
     char buffer[BUF_SIZE];
 
     while(1){
         bzero(buffer, BUF_SIZE);
-        read(sync_socket, buffer, BUF_SIZE);
+        SSL_read(ssl, buffer, BUF_SIZE);
         if(strcmp(buffer, "end client sync")== 0){
             break;
         }
@@ -44,14 +44,14 @@ void sync_client(int sync_socket, char* userid){
         else if(strcmp(command, "upload")==0){
             char file_data[BUF_SIZE];
             bzero(file_data, BUF_SIZE);
-            read(sync_socket, file_data, BUF_SIZE);
+            SSL_read(ssl, file_data, BUF_SIZE);
             receive_file(file_name, file_data, userid);
         }
     }
 
 }
 
-void sync_server(int sync_socket, char* userid){
+void sync_server(SSL *ssl, char* userid){
 
     char buffer[BUF_SIZE];
     bzero(buffer, BUF_SIZE);
@@ -64,7 +64,7 @@ void sync_server(int sync_socket, char* userid){
     file_node* real_current_files = fn_create_from_path(full_path);
     pthread_mutex_unlock(&mutex_client_files);
 
-    read(sync_socket, buffer, BUF_SIZE);
+    SSL_read(ssl, buffer, BUF_SIZE);
 
     char *save;
     char* file_name = strtok_r(buffer, "#", &save);
@@ -85,9 +85,9 @@ void sync_server(int sync_socket, char* userid){
 
                 bzero(buffer2, BUF_SIZE);
                 sprintf(buffer2, "upload#%s", file_name);
-                write(sync_socket, buffer2, BUF_SIZE);
+                SSL_write(ssl, buffer2, BUF_SIZE);
 
-                send_file(file_name, sync_socket, userid);
+                send_file(file_name, ssl, userid);
             }
 
         }else{ // não encontrou, então deve ser deletado no cliente
@@ -95,7 +95,7 @@ void sync_server(int sync_socket, char* userid){
             printf("DELETAR arquivo %s no cliente. \n", file_name);
             bzero(buffer2, BUF_SIZE);
             sprintf(buffer2, "delete#%s", file_name);
-            write(sync_socket, buffer2, BUF_SIZE);
+            SSL_write(ssl, buffer2, BUF_SIZE);
         }
 
         file_name = strtok_r(NULL, "#", &save);
@@ -109,15 +109,15 @@ void sync_server(int sync_socket, char* userid){
             printf("Enviar arquivo %s NOVO para cliente. \n", node->data->name);
             bzero(buffer2, BUF_SIZE);
             sprintf(buffer2, "upload#%s", node->data->name);
-            write(sync_socket, buffer2, BUF_SIZE);
-            send_file(node->data->name, sync_socket, userid);
+            SSL_write(ssl, buffer2, BUF_SIZE);
+            send_file(node->data->name, ssl, userid);
         }
     }
 
   /* Avisa o cliente que terminou de fazer o seu sync. */
   bzero(buffer, BUF_SIZE);
   strcat(buffer, "end server sync");
-  write(sync_socket, buffer, BUF_SIZE);
+  SSL_write(ssl, buffer, BUF_SIZE);
 }
 
 /* Verifica se existe o diretório sync_dir_user NO DISPOSITIVO DO CLIENTE.
@@ -144,7 +144,7 @@ void receive_file(char *file_name, char* file_data, char *userid){
 /* Envia o arquivo file para o usuário.
 Deverá ser executada quando for realizar download de um arquivo.
 file – filename.ext */
-void send_file(char *file_name, int socket, char *userid){
+void send_file(char *file_name, SSL *ssl, char *userid){
     char* full_path = getClientFolderName(userid);
     strcat(full_path, file_name);
 
@@ -153,14 +153,14 @@ void send_file(char *file_name, int socket, char *userid){
     writeFileToBuffer(full_path, file_data);
 
 	int n;
-	n = write(socket, file_data, BUF_SIZE);
+	n = SSL_write(ssl, file_data, BUF_SIZE);
 	if (n < 0){
 		printf("[send_file] Erro ao escrever no socket\n");
 	}
 }
 
 /* Lista todos os arquivos contidos no diretório remoto do cliente. */
-void list(int socket, char *userid){
+void list(SSL *ssl, char *userid){
     char* full_path = getClientFolderName(userid);
     char buffer[256];
     int numb_files = 0; /* Gambiarra para verificar se o diretório é vazio*/
@@ -194,7 +194,7 @@ void list(int socket, char *userid){
   int size = strlen(buffer);
 
   /* Envia para o client os nomes dos arquivos */
-	n = write(socket, buffer, size);
+	n = SSL_write(ssl, buffer, size);
 	if (n < 0){
 		printf("[list] Erro ao escrever no socket\n");
 	}
@@ -214,7 +214,7 @@ void deleteLocalFile(char* file_name, char* userid){
   }
 }
 
-int auth(int socket, char* userid){
+int auth(SSL *ssl, char* userid){
   char buffer[256];
   bzero(buffer, 256);
 
@@ -224,7 +224,7 @@ int auth(int socket, char* userid){
   pthread_mutex_lock(&lock_num_clients);
       if(num_clients >= MAXCLIENTS){
           printf("[auth] Número de clientes conectados excedido\n");
-          num_bytes_sent = write(socket, "NOT OK", 7);
+          num_bytes_sent = SSL_write(ssl, "NOT OK", 7);
           printf("[auth] Número de clientes conectados: %d\n", num_clients);
           pthread_mutex_unlock(&lock_num_clients);
           return ERRO;
@@ -237,7 +237,7 @@ int auth(int socket, char* userid){
 
   /* No buffer vem o userid do cliente que esta tentando conectar.
   Lê do socket: userid */
-  num_bytes_read = read(socket, buffer, 256);
+  num_bytes_read = SSL_read(ssl, buffer, 256);
   if (num_bytes_read < 0){
     printf("[auth] ERROR reading from socket \n");
     return ERRO;
@@ -300,7 +300,7 @@ int auth(int socket, char* userid){
 		dispositivos nos quais está logado. */
 		if (user->devices[0] == 1 && user->devices[1] == 1){
 			printf("ERRO: Este cliente já está logado em dois dispositivos diferentes.\n");
-            num_bytes_sent = write(socket, "NOT OK", 7);
+            num_bytes_sent = SSL_write(ssl, "NOT OK", 7);
 			return ERRO;
 		}
         else if (user->devices[0] == 0){
@@ -314,7 +314,7 @@ int auth(int socket, char* userid){
         pthread_mutex_unlock(&mutex_devices);
 	}
 
-    num_bytes_sent = write(socket, "OK", 3);
+    num_bytes_sent = SSL_write(ssl, "OK", 3);
 
 	if (num_bytes_sent < 0){
 		printf("[auth] ERROR writing on socket\n");
@@ -323,7 +323,7 @@ int auth(int socket, char* userid){
     return SUCESSO;
 }
 
-void receive_command_client(int socket, char *userid){
+void receive_command_client(SSL *ssl, char *userid){
   char buffer[BUF_SIZE];
   char command[10];
   char file_name[32];
@@ -346,7 +346,7 @@ void receive_command_client(int socket, char *userid){
         GET_SYNC_DIR: get_sync_dir#
         TIME: time#
         EXIT: exit# */
-	    num_bytes_read = read(socket, buffer, BUF_SIZE);
+	    num_bytes_read = SSL_read(ssl, buffer, BUF_SIZE);
 
 	    if (num_bytes_read < 0){
             printf("[receive_command_client] Erro ao ler linha de comando do socket.\n");
@@ -372,10 +372,10 @@ void receive_command_client(int socket, char *userid){
             receive_file(file_name, file_data, userid);
         }
         else if(strcmp("download", command) == 0){
-            send_file(file_name, socket, userid);
+            send_file(file_name, ssl, userid);
         }
         else if(strcmp("list", command) == 0){
-            list(socket, userid);
+            list(ssl, userid);
         }
         else if (strcmp("delete", command) == 0){
             //deleteLocalFile(file_name);
@@ -395,6 +395,7 @@ void *sync_thread(void *args_sync){
     /* Uns casts muito loucos */
     arg_struct_sync *args = args_sync;
     int sync_socket = args->sync_socket;
+    SSL *ssl_sync = args->ssl_sync;
     char userid[MAXNAME];
     strcpy(userid, args->userid);
 
@@ -408,11 +409,11 @@ void *sync_thread(void *args_sync){
 
      while(1){
         bzero(buffer, BUF_SIZE);
-        read(sync_socket, buffer, BUF_SIZE);
+        SSL_read(ssl_sync, buffer, BUF_SIZE);
 
         if(strcmp(buffer, "start client sync") == 0){
-            sync_client(sync_socket, userid);
-            sync_server(sync_socket, userid);
+            sync_client(ssl_sync, userid);
+            sync_server(ssl_sync, userid);
         }
      }
      return 0;
@@ -423,13 +424,22 @@ void *client_thread(void *new_sockets){
     arg_struct *args = new_sockets;
 	int socket_id = args->socket_id;
     int sync_socket = args->sync_socket;
+    SSL *ssl_sync = args->ssl_sync;
+    SSL *ssl_cmd = args->ssl_cmd;
+
     char userid[MAXNAME];
     pthread_t s_thread;
 
 	/* Faz verificação de usuário, volta com o nome do cliente em userid */
-	if (auth(socket_id, userid) == ERRO){
+	if (auth(ssl_cmd, userid) == ERRO){
+        SSL_shutdown(ssl_cmd);
         close(socket_id);
+        SSL_free(ssl_cmd);
+        
+        SSL_shutdown(ssl_sync);
         close(sync_socket);
+        SSL_free(ssl_sync);
+        
         free(new_sockets);
         printf("[client_thread] Erro ao autenticar o usuário\n");
         pthread_exit(NULL);
@@ -438,6 +448,7 @@ void *client_thread(void *new_sockets){
     /* Aloca dinamicamente para armazenar o número do socket e passar para a thread de sync */
     arg_struct_sync *args_sync = malloc(sizeof(arg_struct_sync *));
     args_sync->sync_socket = sync_socket;
+    args_sync->ssl_sync = ssl_sync;
     strcpy(args_sync->userid, userid);
 
     /* Cria a thread de sincronização para aquele cliente */
@@ -447,13 +458,18 @@ void *client_thread(void *new_sockets){
     }
 
 	/* Recebe a linha de comando e redireciona para a função objetivo */
-	receive_command_client(socket_id, userid);
+	receive_command_client(ssl_cmd, userid);
 
     /* Mata a thread de sincronização */
     pthread_cancel(s_thread);
 
+    SSL_shutdown(ssl_cmd);
 	close(socket_id);
+    SSL_free(ssl_cmd);
+
+    SSL_shutdown(ssl_sync);
     close(sync_socket);
+    SSL_free(ssl_sync);
     free(new_sockets);
 
 	return 0;
@@ -507,6 +523,39 @@ int main(int argc, char *argv[]){
 	int server_socket_id, new_socket_id, new_sync_socket;
     struct sockaddr_in server_address, client_address, client_sync_address;
 	socklen_t client_len;
+    printf("starting SSL..\n");
+    /* Inicializando o SSL */
+    initializeSSL();
+    /* SSL Sync */
+    SSL_METHOD *method_sync;
+    SSL_CTX *ctx_sync; //ponteiro para a estrutura do contexto do sync
+    SSL *ssl_sync;
+    /* SSL Cmd */
+    SSL_METHOD *method_cmd; 
+    SSL_CTX *ctx_cmd; //ponteiro para a estrutura do contexto dos comandos
+    SSL *ssl_cmd;
+
+    //transformar em funções depois
+    method_cmd = SSLv23_server_method();
+    ctx_cmd = SSL_CTX_new(method_cmd);
+    if (ctx_cmd == NULL) {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+
+    //transformar em funções depois
+    method_sync = SSLv23_server_method();
+    ctx_sync = SSL_CTX_new(method_sync);
+    if (ctx_sync == NULL) {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+
+    /* SSL carrega certificados */
+    SSL_CTX_use_certificate_file(ctx_sync, "CertFile.pem", SSL_FILETYPE_PEM);
+    SSL_CTX_use_PrivateKey_file(ctx_sync, "KeyFile.pem", SSL_FILETYPE_PEM);
+    SSL_CTX_use_certificate_file(ctx_cmd, "CertFile.pem", SSL_FILETYPE_PEM);
+    SSL_CTX_use_PrivateKey_file(ctx_cmd, "KeyFile.pem", SSL_FILETYPE_PEM);
 
     /* Inicializa mutex */
     if (pthread_mutex_init(&mutex_devices, NULL) != 0){
@@ -562,38 +611,73 @@ int main(int argc, char *argv[]){
 
     /* Zero clientes conectados */
     num_clients = 0;
-
+    printf("Before while\n");
 	/* Laço que fica aguardando conexões de clientes e criandos as threads*/
 	while(1){
 
 	    /* Aguarda a conexão do cliente no socket principal */
 		if((new_socket_id = accept(server_socket_id, (struct sockaddr *) &client_address, &client_len)) != ERRO){
+            printf("entrou no accept\n");
+            /* 
+                SSL Handshake 
+                Socket de comando
+            */
+            ssl_cmd	= SSL_new(ctx_cmd);
+            SSL_set_fd(ssl_cmd,	new_socket_id);
+            int ssl_err = SSL_accept(ssl_cmd);
+            if(ssl_err <= 0)
+            {
+                //Erro aconteceu, fecha o SSL
+            }
 
             /* Aguarda a conexão do cliente no socket de sincronização */
             if((new_sync_socket = accept(server_socket_id, (struct sockaddr *) &client_sync_address, &client_len)) != ERRO){
+
+                /*  
+                    SSL Handshake 
+                    Socket de Sync
+                */
+                ssl_sync = SSL_new(ctx_sync);
+                SSL_set_fd(ssl_sync, new_sync_socket);
+                int ssl_err = SSL_accept(ssl_sync);
+                if(ssl_err <= 0)
+                {
+                    //Erro aconteceu, fecha o SSL
+                }
 
                 /* Aloca dinamicamente para armazenar o número do socket e passar para a thread */
                 arg_struct *args = malloc(sizeof(arg_struct *));
                 args->socket_id = new_socket_id;
                 args->sync_socket = new_sync_socket;
+                args->ssl_sync = ssl_sync; //modificado para ter os respectivos ssl's
+                args->ssl_cmd = ssl_cmd; //modificado para ter os respectivos ssl's
 
             	/* Se conectou, cria a thread para o cliente, enviando o id do socket */
             	if(pthread_create( &c_thread, NULL, client_thread, (void *)args) != 0){
             		printf("[main] ERROR on thread creation.\n");
+                    SSL_shutdown(ssl_cmd);
             		close(new_socket_id);
+                    SSL_free(ssl_cmd);
+
+                    SSL_shutdown(ssl_sync);
                     close(new_sync_socket);
+                    SSL_free(ssl_sync);
                     exit(1);
                 }
             }
             else{
                 printf("[main] Erro no accept do sync\n");
+                SSL_shutdown(ssl_sync);
                 close(new_sync_socket);
+                SSL_free(ssl_sync);
                 exit(1);
             }
         }
         else{
             printf("[main] Erro no accept\n");
+            SSL_shutdown(ssl_cmd);
             close(new_socket_id);
+            SSL_free(ssl_cmd);
             exit(1);
         }
     }

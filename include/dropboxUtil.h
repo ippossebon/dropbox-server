@@ -7,6 +7,9 @@
 #define ERRO -1
 #define SUCESSO 1
 #define BUF_SIZE 256
+/* SSL includes */
+#include <openssl/err.h>
+#include <openssl/ssl.h>
 
 //Estrutura que vai armazenar informações de um arquivo
 typedef struct file_info {
@@ -39,14 +42,18 @@ typedef struct client_node{
 typedef struct arg_struct {
     int socket_id;
     int sync_socket;
+    SSL *ssl_cmd;
+    SSL *ssl_sync;
 } arg_struct;
 
 /* Estrutura para armazenar os sockets a serem passados pra thread de sync*/
 typedef struct arg_struct_sync {
     int sync_socket;
+    SSL *ssl_sync;
     char userid[MAXNAME];
 } arg_struct_sync;
 
+void initializeSSL();
 int writeFileToBuffer(char* filename, char* buffer);
 int writeBufferToFile(char* filename, char* buffer);
 char* getClientFolderName(char* client_id);
