@@ -381,7 +381,7 @@ void receive_command_client(SSL *ssl, char *userid){
             //deleteLocalFile(file_name);
         }
         else if (strcmp("time", command) == 0){
-            send_time(socket);
+            send_time(ssl);
         }
         else if(strcmp("exit", command) == 0){
             close_connection(userid);
@@ -394,7 +394,6 @@ void receive_command_client(SSL *ssl, char *userid){
 void *sync_thread(void *args_sync){
     /* Uns casts muito loucos */
     arg_struct_sync *args = args_sync;
-    int sync_socket = args->sync_socket;
     SSL *ssl_sync = args->ssl_sync;
     char userid[MAXNAME];
     strcpy(userid, args->userid);
@@ -435,11 +434,11 @@ void *client_thread(void *new_sockets){
         SSL_shutdown(ssl_cmd);
         close(socket_id);
         SSL_free(ssl_cmd);
-        
+
         SSL_shutdown(ssl_sync);
         close(sync_socket);
         SSL_free(ssl_sync);
-        
+
         free(new_sockets);
         printf("[client_thread] Erro ao autenticar o usuário\n");
         pthread_exit(NULL);
@@ -475,7 +474,7 @@ void *client_thread(void *new_sockets){
 	return 0;
 }
 
-void send_time(int socket){
+void send_time(SSL *ssl){
     time_t now;
     struct tm *local_time;
     char timestamp[36];
@@ -512,7 +511,7 @@ void send_time(int socket){
     printf("timestamp %s\n", timestamp);
 
     int n;
-    n = write(socket, timestamp, 36);
+    n = SSL_write(ssl, timestamp, 36);
     if (n < 0){
         printf("[sendTime] Erro ao escrever timestamp no socket\n");
     }
@@ -531,7 +530,7 @@ int main(int argc, char *argv[]){
     SSL_CTX *ctx_sync; //ponteiro para a estrutura do contexto do sync
     SSL *ssl_sync;
     /* SSL Cmd */
-    SSL_METHOD *method_cmd; 
+    SSL_METHOD *method_cmd;
     SSL_CTX *ctx_cmd; //ponteiro para a estrutura do contexto dos comandos
     SSL *ssl_cmd;
 
@@ -618,8 +617,8 @@ int main(int argc, char *argv[]){
 	    /* Aguarda a conexão do cliente no socket principal */
 		if((new_socket_id = accept(server_socket_id, (struct sockaddr *) &client_address, &client_len)) != ERRO){
             printf("entrou no accept\n");
-            /* 
-                SSL Handshake 
+            /*
+                SSL Handshake
                 Socket de comando
             */
             ssl_cmd	= SSL_new(ctx_cmd);
@@ -633,8 +632,8 @@ int main(int argc, char *argv[]){
             /* Aguarda a conexão do cliente no socket de sincronização */
             if((new_sync_socket = accept(server_socket_id, (struct sockaddr *) &client_sync_address, &client_len)) != ERRO){
 
-                /*  
-                    SSL Handshake 
+                /*
+                    SSL Handshake
                     Socket de Sync
                 */
                 ssl_sync = SSL_new(ctx_sync);

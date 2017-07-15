@@ -21,6 +21,6 @@ void sync_server(SSL *ssl, char* userid);
 void *sync_thread(void *args_sync);
 void deleteLocalFile(char* file_name, char* userid);
 void close_connection(char* userid);
-void send_time(int socket);
+void send_time(SSL *ssl);
 
 #endif

@@ -242,14 +242,9 @@ void sync_server(int commands_socket){
 void insertSSLIntoSocketSync(int socket) {
   ssl_sync = SSL_new(ctx_sync);
   SSL_set_fd(ssl_sync, socket);
+
   if (SSL_connect(ssl_sync) == -1)
       ERR_print_errors_fp(stderr);
-  else {
-      //GG
-      X509 *cert;
-      char *line;
-      cert = SSL_get_peer_certificate(ssl_sync);
-  }
 }
 
 void insertSSLIntoSocketCmd(int socket) {
@@ -492,7 +487,8 @@ file_node* fn_create_from_path_server_time(char* path, int socket) {
       closedir(d);
    }
    return list;
-=======
+}
+
 void createMethodCTXSync() {
   method_sync = SSLv23_client_method();
   ctx_sync = SSL_CTX_new(method_sync);
@@ -509,7 +505,6 @@ void createMethodCTXCmd() {
       ERR_print_errors_fp(stderr);
       abort();
   }
->>>>>>> openSSL
 }
 
 int main(int argc, char *argv[]){
