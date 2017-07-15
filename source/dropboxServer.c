@@ -350,6 +350,8 @@ void receive_command_client(SSL *ssl, char *userid){
 
 	    if (num_bytes_read < 0){
             printf("[receive_command_client] Erro ao ler linha de comando do socket.\n");
+            printf("BUFFER: %s\n", buffer);
+            exit(1);
         }
 
 	    /* Separa o buffer de acordo com as informações necessárias, onde o delimitador é #.*/
@@ -477,8 +479,8 @@ void *client_thread(void *new_sockets){
 void send_time(SSL *ssl){
     time_t now;
     struct tm *local_time;
-    char timestamp[36];
-    bzero(timestamp, 36);
+    char timestamp[256];
+    bzero(timestamp, 256);
 
     now = time (NULL);
     local_time = localtime (&now);
@@ -511,7 +513,8 @@ void send_time(SSL *ssl){
     printf("timestamp %s\n", timestamp);
 
     int n;
-    n = SSL_write(ssl, timestamp, 36);
+    n = SSL_write(ssl, timestamp, 256);
+    printf("Vai escrever o seguinte timestamp no socket: %s\n", timestamp);
     if (n < 0){
         printf("[sendTime] Erro ao escrever timestamp no socket\n");
     }
@@ -522,13 +525,16 @@ int main(int argc, char *argv[]){
 	int server_socket_id, new_socket_id, new_sync_socket;
     struct sockaddr_in server_address, client_address, client_sync_address;
 	socklen_t client_len;
-    printf("starting SSL..\n");
+
     /* Inicializando o SSL */
     initializeSSL();
+    printf("[main] Inicializou SSL.\n");
+
     /* SSL Sync */
     SSL_METHOD *method_sync;
     SSL_CTX *ctx_sync; //ponteiro para a estrutura do contexto do sync
     SSL *ssl_sync;
+
     /* SSL Cmd */
     SSL_METHOD *method_cmd;
     SSL_CTX *ctx_cmd; //ponteiro para a estrutura do contexto dos comandos
@@ -602,21 +608,19 @@ int main(int argc, char *argv[]){
 
     /* Informa que o socket em questões pode receber conexões, 5 indica o
     tamanho da fila de mensagens */
-    /*TODO: por que está aceitando mais do que 5 clientes?*/
-    /* Dez conexões: 5 pro socket principal e 5 pra sincronização */
 	listen(server_socket_id, 10);
 
 	client_len = sizeof(struct sockaddr_in);
 
     /* Zero clientes conectados */
     num_clients = 0;
-    printf("Before while\n");
+    printf("[main] Before while\n");
 	/* Laço que fica aguardando conexões de clientes e criandos as threads*/
 	while(1){
 
 	    /* Aguarda a conexão do cliente no socket principal */
 		if((new_socket_id = accept(server_socket_id, (struct sockaddr *) &client_address, &client_len)) != ERRO){
-            printf("entrou no accept\n");
+            printf("[main] entrou no accept\n");
             /*
                 SSL Handshake
                 Socket de comando
@@ -627,6 +631,8 @@ int main(int argc, char *argv[]){
             if(ssl_err <= 0)
             {
                 //Erro aconteceu, fecha o SSL
+                printf("[main] Erro com SSL\n");
+                exit(1);
             }
 
             /* Aguarda a conexão do cliente no socket de sincronização */
@@ -642,6 +648,8 @@ int main(int argc, char *argv[]){
                 if(ssl_err <= 0)
                 {
                     //Erro aconteceu, fecha o SSL
+                    printf("[main] Erro com SSL\n");
+                    exit(1);
                 }
 
                 /* Aloca dinamicamente para armazenar o número do socket e passar para a thread */

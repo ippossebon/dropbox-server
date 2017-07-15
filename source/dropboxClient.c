@@ -129,7 +129,7 @@ void get_file(char *file, SSL *ssl){
 
 /* Sincroniza o diretório “sync_dir_<nomeusuário>” com
 o servidor */
-void sync_client(int commands_socket){
+void sync_client(SSL* ssl_cmd){
 
   /* Informa ao server que vai sincronizar (avisa quais foram as modificações
   realizadas localmente)*/
@@ -140,7 +140,7 @@ void sync_client(int commands_socket){
   SSL_write(ssl_sync, buffer, BUF_SIZE);
 
   /* Aqui estará a nova lista com os arquivos atuais/reais */
-  real_current_files = (file_node*) fn_create_from_path_server_time(sync_dir, commands_socket);
+  real_current_files = (file_node*) fn_create_from_path_server_time(sync_dir, ssl_cmd);
   file_node* node;
 
   /* Para cada arquivo "real/nova" bucamos na lista "antiga" se ele existe.
@@ -199,7 +199,7 @@ void sync_client(int commands_socket){
 }
 
 /* Recebe as modificações que foram feitas localmente pelo server */
-void sync_server(int commands_socket){
+void sync_server(SSL* ssl_cmd){
 
     char buffer[BUF_SIZE];
     bzero(buffer, BUF_SIZE);
@@ -236,7 +236,7 @@ void sync_server(int commands_socket){
 
     // A current está atualizando para que não dar erro.
     fn_clear(current_files);
-    current_files = fn_create_from_path_server_time(sync_dir, commands_socket);
+    current_files = fn_create_from_path_server_time(sync_dir, ssl_cmd);
 }
 
 void insertSSLIntoSocketSync(int socket) {
@@ -348,16 +348,14 @@ int check_sync_dir(){
     return SUCESSO;
 }
 
-
-void *sync_thread(void *sockets){
+void *sync_thread(void *arguments){
     /* Uns casts muito loucos */
-    arg_struct *args = sockets;
-	int socket_id = args->socket_id;
-    sync_socket = args->sync_socket;
+    struct arg_struct *args = arguments;
+    SSL *ssl_cmd = args->ssl_cmd;
 
     while(1){
-        sync_client(socket_id);
-        sync_server(socket_id);
+        sync_client(ssl_cmd);
+        sync_server(ssl_cmd);
         sleep(10);
     }
 
@@ -371,12 +369,12 @@ O resultado será usado pela aplicação cliente para calcular
 sua nova referência temporal (a ser utilizada nos registros
 de arquivos)
 */
-char* get_timestamp_server(int socket){
+char* get_timestamp_server(SSL* ssl){
 
     int num_bytes_read, num_bytes_sent;
     char buffer[256];
-    char* command = "time#";
     bzero(buffer, 256);
+    strcat(buffer, "time#");
 
     /* Pega a hora atual para determinar quanto tempo vai demorar a requisição.*/
     time_t now;
@@ -386,16 +384,15 @@ char* get_timestamp_server(int socket){
     before_request_time = localtime (&now);
 
     /* Envia o comando time# */
-    num_bytes_sent = write(socket, command, strlen(command));
+    num_bytes_sent = SSL_write(ssl, buffer, strlen(buffer));
     if (num_bytes_sent < 0){
-      printf("[get_timestamp_server] ERROR writing on socket");
+        printf("[get_timestamp_server] ERROR writing on socket");
     }
 
     /* Lê o timestamp do servidor que vem no formato aaaa.mm.dd hh:mm:ss */
-    num_bytes_read = read(socket, buffer, 256);
-
+    num_bytes_read = SSL_read(ssl, buffer, 256);
     if (num_bytes_read < 0){
-      printf("[get_timestamp_server] ERROR reading from socket");
+        printf("[get_timestamp_server] ERROR reading from socket");
     }
 
     now = time (NULL);
@@ -416,10 +413,11 @@ char* get_timestamp_server(int socket){
     time_client = localtime(&new_time);
 
     /* Coloca a data no formato: aaaa.mm.dd hh:mm:ss */
-    char *timestamp = malloc(sizeof(char) * 36);
-    bzero(timestamp, 36);
+    char *timestamp = malloc(sizeof(char) * 256);
+    bzero(timestamp, 256);
 
     time_client->tm_hour += 1; // não sei por que, tá louco
+    time_client->tm_mon += 1;
 
     char seconds[2];
     sprintf(seconds, "%d", time_client->tm_sec);
@@ -430,7 +428,7 @@ char* get_timestamp_server(int socket){
     char day[2];
     sprintf(day, "%d", time_client->tm_mday);
     char month[2];
-    sprintf(month, "%d", time_client->tm_mon + 1);
+    sprintf(month, "%d", time_client->tm_mon);
     char year[2];
     sprintf(year, "%d", time_client->tm_year + 1900);
 
@@ -454,7 +452,7 @@ char* get_timestamp_server(int socket){
 /* Cria um file_set a partir dos arquivos de um caminho indicado por path,
 utilizando o timestamp recebido do servidor, sobre o algoritmo de Cristian.
 */
-file_node* fn_create_from_path_server_time(char* path, int socket) {
+file_node* fn_create_from_path_server_time(char* path, SSL* ssl) {
 
    file_node* list = fn_create();
 
@@ -476,7 +474,7 @@ file_node* fn_create_from_path_server_time(char* path, int socket) {
                strcpy(file->name, filename);
 
                /* Pega o horário atualizado de acordo com o horário do server. */
-               char *timestamp = get_timestamp_server(socket);
+               char *timestamp = get_timestamp_server(ssl);
                strcpy(file->last_modified, timestamp);
                file->size = (int)attr.st_size;
                strcpy(file->extension, "unknown"); //TODO arrumer isso para pegar a extensão do arquivo se houver
@@ -560,6 +558,8 @@ int main(int argc, char *argv[]){
         struct arg_struct *args = malloc(sizeof(arg_struct *));
         args->socket_id = socket_id;
         args->sync_socket = sync_socket;
+        args->ssl_cmd = ssl_cmd;
+        args->ssl_sync = ssl_sync;
 
     /* Cria a thread de sincronização */
     if(pthread_create( &s_thread, NULL, sync_thread, (void *)args) != 0){
@@ -579,7 +579,7 @@ int main(int argc, char *argv[]){
     strcat(sync_dir, userid);
     printf("Seu diretório sincronizado é [%s]\n",sync_dir);
     //Monta a lista inicial de arquivos do diretório
-    current_files = (file_node*) fn_create_from_path_server_time(sync_dir, socket_id);
+    current_files = (file_node*) fn_create_from_path_server_time(sync_dir, ssl_cmd);
     fn_print(current_files);
     char buffer[256];
     printf("\n**************************************\n");
@@ -629,7 +629,7 @@ int main(int argc, char *argv[]){
         list(buffer, ssl_cmd);
       }
       else if (strcmp("time", command) == 0){
-          get_timestamp_server(socket_id);
+          get_timestamp_server(ssl_cmd);
       }
       else if( strcmp("exit", command) == 0){
         close_connection(buffer, ssl_cmd);
