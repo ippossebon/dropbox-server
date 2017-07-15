@@ -413,6 +413,9 @@ void *client_thread(void *new_sockets){
     arg_struct *args = new_sockets;
 	int socket_id = args->socket_id;
     int sync_socket = args->sync_socket;
+    SSL *ssl_sync = args->ssl_sync;
+    SSL *ssl_cmd = args->ssl_cmd;
+
     char userid[MAXNAME];
     pthread_t s_thread;
 
@@ -467,14 +470,15 @@ int main(int argc, char *argv[]){
     SSL *ssl_cmd;
 
     //transformar em funções depois
-    method_cmd = SSLv23_client_method();
+    method_cmd = SSLv23_server_method();
     ctx_cmd = SSL_CTX_new(method_cmd);
     if (ctx_cmd == NULL) {
         ERR_print_errors_fp(stderr);
         abort();
     }
+
     //transformar em funções depois
-    method_sync = SSLv23_client_method();
+    method_sync = SSLv23_server_method();
     ctx_sync = SSL_CTX_new(method_sync);
     if (ctx_sync == NULL) {
         ERR_print_errors_fp(stderr);

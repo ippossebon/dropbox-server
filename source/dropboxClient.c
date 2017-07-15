@@ -356,7 +356,7 @@ int check_sync_dir(){
 
 
 void *sync_thread(void *socket_id){
-    /* Uns casts muito loucos */
+  /* Uns casts muito loucos */
 	sync_socket = *((int *) socket_id);
 
     while(1){
@@ -391,8 +391,8 @@ int main(int argc, char *argv[]){
 
   /* Configurando SSL */
   initializeSSL();
-  //createMethodCTXCmd();
-  //createMethodCTXSync();
+  createMethodCTXCmd();
+  createMethodCTXSync();
 
   /* Testa se todos os argumentos foram informados ao executar o cliente */
   if (argc < 4) {

@@ -14,6 +14,7 @@
         "x509.h": "c",
         "stdio.h": "c",
         "dsa.h": "c",
-        "ecdsa.h": "c"
+        "ecdsa.h": "c",
+        "stdlib.h": "c"
     }
 }
