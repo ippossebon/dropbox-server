@@ -245,13 +245,6 @@ void insertSSLIntoSocketSync(int socket) {
       X509 *cert;
       char *line;
       cert = SSL_get_peer_certificate(ssl_sync);
-      if (cert != NULL) {
-          line = X509_NAME_oneline(X509_get_subject_name(cert), 0, 0);
-          printf("Subject: %s\n", line);
-          free(line);
-          line = X509_NAME_oneline(X509_get_issuer_name(cert), 0, 0);
-          printf("Issuer: %s\n", line);
-      }
   }
 }
 
@@ -441,6 +434,8 @@ int main(int argc, char *argv[]){
     /* Cria a thread de sincronização */
     if(pthread_create( &s_thread, NULL, sync_thread, arg) != 0){
       printf("[main] ERROR on thread creation.\n");
+      SSL_shutdown(ssl_sync);
+      SSL_free(ssl_sync);
       close(sync_socket);
       exit(1);
     }
@@ -514,8 +509,13 @@ int main(int argc, char *argv[]){
   }
 
   /* Encerra os sockets */
+  SSL_shutdown(ssl_cmd);
   close(socket_id);
+  SSL_free(ssl_cmd);
+
+  SSL_shutdown(ssl_sync);
   close(sync_socket);
+  SSL_free(ssl_sync);
 
   return 0;
 }
