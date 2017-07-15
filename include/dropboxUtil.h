@@ -54,6 +54,7 @@ typedef struct arg_struct_sync {
 } arg_struct_sync;
 
 void initializeSSL();
+void shutdownSSLClear(SSL *ssl);
 int writeFileToBuffer(char* filename, char* buffer);
 int writeBufferToFile(char* filename, char* buffer);
 char* getClientFolderName(char* client_id);

@@ -434,9 +434,9 @@ int main(int argc, char *argv[]){
     /* Cria a thread de sincronização */
     if(pthread_create( &s_thread, NULL, sync_thread, arg) != 0){
       printf("[main] ERROR on thread creation.\n");
-      SSL_shutdown(ssl_sync);
-      SSL_free(ssl_sync);
+      shutdownSSLClear(ssl_sync);
       close(sync_socket);
+      SSL_free(ssl_sync);
       exit(1);
     }
 
@@ -509,11 +509,11 @@ int main(int argc, char *argv[]){
   }
 
   /* Encerra os sockets */
-  SSL_shutdown(ssl_cmd);
+  shutdownSSLClear(ssl_cmd);
   close(socket_id);
   SSL_free(ssl_cmd);
 
-  SSL_shutdown(ssl_sync);
+  shutdownSSLClear(ssl_sync);
   close(sync_socket);
   SSL_free(ssl_sync);
 

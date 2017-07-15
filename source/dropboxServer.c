@@ -422,11 +422,11 @@ void *client_thread(void *new_sockets){
 
 	/* Faz verificação de usuário, volta com o nome do cliente em userid */
 	if (auth(ssl_cmd, userid) == ERRO){
-        SSL_shutdown(ssl_cmd);
+        shutdownSSLClear(ssl_cmd);
         close(socket_id);
         SSL_free(ssl_cmd);
         
-        SSL_shutdown(ssl_sync);
+        shutdownSSLClear(ssl_sync);
         close(sync_socket);
         SSL_free(ssl_sync);
         
@@ -453,11 +453,11 @@ void *client_thread(void *new_sockets){
     /* Mata a thread de sincronização */
     pthread_cancel(s_thread);
 
-    SSL_shutdown(ssl_cmd);
+    shutdownSSLClear(ssl_cmd);
 	close(socket_id);
     SSL_free(ssl_cmd);
 
-    SSL_shutdown(ssl_sync);
+    shutdownSSLClear(ssl_sync);
     close(sync_socket);
     SSL_free(ssl_sync);
     free(new_sockets);
@@ -602,11 +602,11 @@ int main(int argc, char *argv[]){
             	/* Se conectou, cria a thread para o cliente, enviando o id do socket */
             	if(pthread_create( &c_thread, NULL, client_thread, (void *)args) != 0){
             		printf("[main] ERROR on thread creation.\n");
-                    SSL_shutdown(ssl_cmd);
+                    shutdownSSLClear(ssl_cmd);
             		close(new_socket_id);
                     SSL_free(ssl_cmd);
 
-                    SSL_shutdown(ssl_sync);
+                    shutdownSSLClear(ssl_sync);
                     close(new_sync_socket);
                     SSL_free(ssl_sync);
                     exit(1);
@@ -614,7 +614,7 @@ int main(int argc, char *argv[]){
             }
             else{
                 printf("[main] Erro no accept do sync\n");
-                SSL_shutdown(ssl_sync);
+                shutdownSSLClear(ssl_sync);
                 close(new_sync_socket);
                 SSL_free(ssl_sync);
                 exit(1);
@@ -622,7 +622,7 @@ int main(int argc, char *argv[]){
         }
         else{
             printf("[main] Erro no accept\n");
-            SSL_shutdown(ssl_cmd);
+            shutdownSSLClear(ssl_cmd);
             close(new_socket_id);
             SSL_free(ssl_cmd);
             exit(1);

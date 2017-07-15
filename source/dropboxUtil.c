@@ -270,3 +270,16 @@ void initializeSSL() {
     SSL_library_init();
     OpenSSL_add_all_algorithms();
 }
+
+void shutdownSSLClear(SSL *ssl){
+    int ssl_response;
+    while(1) {
+        ssl_response = SSL_shutdown(ssl);
+        if(ssl_response == 1){
+            break;
+        } else if(ssl_response == -1) {
+            printf("ERROR at shutdown SSL\n");
+            break;
+        }
+    }
+}

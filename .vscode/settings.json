@@ -17,6 +17,7 @@
         "ecdsa.h": "c",
         "stdlib.h": "c",
         "unistd.h": "c",
-        "string2.h": "c"
+        "string2.h": "c",
+        "dropboxclient.c": "cpp"
     }
 }
