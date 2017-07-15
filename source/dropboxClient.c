@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <sys/stat.h>
+#include <time.h>
 
 /* Globais */
 char host[128];
@@ -330,7 +331,7 @@ O resultado será usado pela aplicação cliente para calcular
 sua nova referência temporal (a ser utilizada nos registros
 de arquivos)
 */
-int get_time_server(int socket){
+char* get_timestamp_server(int socket){
 
     int num_bytes_read, num_bytes_sent;
     char buffer[256];
@@ -338,27 +339,76 @@ int get_time_server(int socket){
     bzero(buffer, 256);
 
     /* Pega a hora atual para determinar quanto tempo vai demorar a requisição.*/
-    time_t before_request_time, after_request_time;
-    time(&before_request_time);
+    time_t now;
+    struct tm *before_request_time, *after_request_time;
+
+    now = time (NULL);
+    before_request_time = localtime (&now);
 
     /* Envia o comando time# */
     num_bytes_sent = write(socket, command, strlen(command));
     if (num_bytes_sent < 0){
-      printf("[get_time_server] ERROR writing on socket");
+      printf("[get_timestamp_server] ERROR writing on socket");
     }
 
-    /* Lê o nome dos arquivos que vem no buffer no formato: file1#file2#file# */
+    /* Lê o timestamp do servidor que vem no formato aaaa.mm.dd hh:mm:ss */
     num_bytes_read = read(socket, buffer, 256);
-    time(&after_request_time);
 
     if (num_bytes_read < 0){
-      printf("[get_time_server] ERROR reading from socket");
+      printf("[get_timestamp_server] ERROR reading from socket");
     }
 
-    // now = time (NULL);
-    // after_request_time = localtime (&now);
+    now = time (NULL);
+    after_request_time = localtime (&now);
 
     printf("Timestamp que veio do server: %s\n", buffer);
+
+    struct tm *time_server = malloc(sizeof(struct tm));
+    strptime(buffer, "%Y.%m.%d %H:%M:%S", time_server);
+    time_server->tm_mon += 1; // não sei por que
+
+    printf("Timestamp struct do server: %d.%d.%d %d:%d:%d\n", time_server->tm_year,
+        time_server->tm_mon, time_server->tm_mday, time_server->tm_hour, time_server->tm_min, time_server->tm_sec);
+
+    /* Aplica a fórmula T_cliente = T_servidor + (T1 - t0)/2*/
+    double delta_time = difftime(mktime(after_request_time), mktime(before_request_time));
+    delta_time = delta_time / 2;
+
+    time_t new_time = delta_time + mktime(time_server);
+    struct tm *time_client = malloc(sizeof(struct tm));
+    time_client = localtime(&new_time);
+
+    /* Coloca a data no formato: aaaa.mm.dd hh:mm:ss */
+    char timestamp[30];
+    bzero(timestamp, 30);
+
+    char seconds[2];
+    sprintf(seconds, "%d", time_client->tm_sec);
+    char minutes[2];
+    sprintf(minutes, "%d", time_client->tm_min);
+    char hour[2];
+    sprintf(hour, "%d", time_client->tm_hour);
+    char day[2];
+    sprintf(day, "%d", time_client->tm_mday);
+    char month[2];
+    sprintf(month, "%d", time_client->tm_mon + 1);
+    char year[2];
+    sprintf(year, "%d", time_client->tm_year + 1900);
+
+    strcat(timestamp, year);
+    strcat(timestamp, ".");
+    strcat(timestamp, month);
+    strcat(timestamp, ".");
+    strcat(timestamp, day);
+    strcat(timestamp, " ");
+    strcat(timestamp, hour);
+    strcat(timestamp, ":");
+    strcat(timestamp, minutes);
+    strcat(timestamp, ":");
+    strcat(timestamp, seconds);
+
+    printf("Hora final no cliente: %s\n", timestamp);
+
     return 0;
 }
 
@@ -468,7 +518,7 @@ int main(int argc, char *argv[]){
         list(buffer, socket_id);
       }
       else if (strcmp("time", command) == 0){
-          get_time_server(socket_id);
+          get_timestamp_server(socket_id);
       }
       else if( strcmp("exit", command) == 0){
         close_connection(buffer, socket_id);
