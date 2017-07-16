@@ -487,17 +487,17 @@ void send_time(SSL *ssl){
     local_time = localtime (&now);
 
     /* Coloca a data no formato: aaaa.mm.dd hh:mm:ss */
-    char seconds[2];
+    char seconds[3];
     sprintf(seconds, "%d", local_time->tm_sec);
-    char minutes[2];
+    char minutes[3];
     sprintf(minutes, "%d", local_time->tm_min);
-    char hour[2];
+    char hour[3];
     sprintf(hour, "%d", local_time->tm_hour);
-    char day[2];
+    char day[3];
     sprintf(day, "%d", local_time->tm_mday);
-    char month[2];
+    char month[3];
     sprintf(month, "%d", local_time->tm_mon);
-    char year[2];
+    char year[5];
     sprintf(year, "%d", local_time->tm_year + 1900);
 
     strcat(timestamp, year);

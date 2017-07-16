@@ -422,17 +422,17 @@ char* get_timestamp_server(SSL* ssl){
     //time_client->tm_hour += 1; // não sei por que, tá louco
     time_client->tm_mon += 1;
 
-    char seconds[2];
-    sprintf(seconds, "%d", time_client->tm_sec);
-    char minutes[2];
-    sprintf(minutes, "%d", time_client->tm_min);
-    char hour[2];
-    sprintf(hour, "%d", time_client->tm_hour);
-    char day[2];
-    sprintf(day, "%d", time_client->tm_mday);
-    char month[2];
-    sprintf(month, "%d", time_client->tm_mon);
-    char year[2];
+    char seconds[3];
+    sprintf(seconds, "%2d", time_client->tm_sec);
+    char minutes[3];
+    sprintf(minutes, "%2d", time_client->tm_min);
+    char hour[3];
+    sprintf(hour, "%2d", time_client->tm_hour);
+    char day[3];
+    sprintf(day, "%2d", time_client->tm_mday);
+    char month[3];
+    sprintf(month, "%2d", time_client->tm_mon);
+    char year[5];
     sprintf(year, "%d", time_client->tm_year + 1900);
 
     strcat(timestamp, year);
