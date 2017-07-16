@@ -1,7 +1,7 @@
 #ifndef __DROPBOXUTIL__
 #define	__DROPBOXUTIL__
 
-#define MAXNAME 32
+#define MAXNAME 36
 #define MAXFILES 256
 #define MAXCLIENTS 5
 #define ERRO -1

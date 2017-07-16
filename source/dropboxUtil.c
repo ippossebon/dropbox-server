@@ -94,14 +94,18 @@ file_node* fn_create_from_path(char* path, time_t difference_server) { //Cria um
                //Adiciona um file_info a lista
                file_info* file = malloc(sizeof(file_info));
                strcpy(file->name, filename);
-               //TODO Tem que considerar milisegundos aqui?
                //Pega a última modificação do arquivo e salva. Ex.: "2017.03.12 08:10:59"
-               //strftime(file->last_modified, 36, "%Y.%m.%d %H:%M:%S", localtime(&attr.st_mtime) + difference_server);
                time_t date_seconds = mktime(localtime(&attr.st_mtime)) + difference_server;
+               printf(">>>>>>> difference_server: %ld\n", difference_server);
+               printf(">>>>>>> date_seconds: %ld\n", date_seconds);
+
+
                struct tm* last_modified_date = localtime(&date_seconds);
                strftime (file->last_modified, 36, "%Y.%m.%d %H:%M:%S", last_modified_date);
+
+               printf(">>>>>>> last_modified: %s\n", file->last_modified);
                file->size = (int)attr.st_size;
-               strcpy(file->extension, "unknown"); //TODO arrumer isso para pegar a extensão do arquivo se houver
+               strcpy(file->extension, "unknown");
                list = fn_add(list,file);
             }
          }

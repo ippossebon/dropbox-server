@@ -3,7 +3,6 @@
 
 #include "../include/dropboxUtil.h"
 
-#define MAXNAME 32
 #define ERRO -1
 #define MAXCLIENTS 5
 

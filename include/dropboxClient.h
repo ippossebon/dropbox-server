@@ -1,7 +1,6 @@
 #ifndef __DROPBOXCLIENT__
 #define	__DROPBOXCLIENT__
 
-#define MAXNAME 32
 #define ERRO -1
 
 int connect_server(char *host, int port);
