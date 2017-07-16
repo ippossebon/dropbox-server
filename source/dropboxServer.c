@@ -237,6 +237,7 @@ int auth(SSL *ssl, char* userid){
 
   /* No buffer vem o userid do cliente que esta tentando conectar.
   Lê do socket: userid */
+  bzero(buffer, BUF_SIZE);
   num_bytes_read = SSL_read(ssl, buffer, BUF_SIZE);
   if (num_bytes_read < 0){
     printf("[auth] ERROR reading from socket \n");

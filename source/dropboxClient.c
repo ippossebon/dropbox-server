@@ -79,6 +79,7 @@ void close_connection(char* buffer, SSL *ssl){
   /* Envia conteúdo do buffer pelo socket */
   int num_bytes_sent;
   int buffer_size = strlen(buffer);
+  bzero(buffer, BUF_SIZE);
   num_bytes_sent = SSL_write(ssl, buffer, BUF_SIZE);
 
   if (num_bytes_sent < 0){
@@ -277,6 +278,7 @@ void list(char* line, SSL *ssl){
     printf("[list] ERROR writing from socket");
   }
 
+  bzero(buffer, BUF_SIZE);
   /* Lê o nome dos arquivos que vem no buffer no formato: file1#file2#file# */
   num_bytes_read = SSL_read(ssl, buffer, BUF_SIZE);
 
@@ -390,6 +392,7 @@ char* get_timestamp_server(SSL* ssl){
     }
 
     /* Lê o timestamp do servidor que vem no formato aaaa.mm.dd hh:mm:ss */
+    bzero(buffer, BUF_SIZE);
     num_bytes_read = SSL_read(ssl, buffer, BUF_SIZE);
     if (num_bytes_read < 0){
         printf("[get_timestamp_server] ERROR reading from socket");
@@ -398,7 +401,7 @@ char* get_timestamp_server(SSL* ssl){
     now = time (NULL);
     after_request_time = localtime (&now);
 
-    //printf("Timestamp que veio do server: %s\n", buffer);
+    printf("Timestamp que veio do server: %s\n", buffer);
 
     struct tm *time_server = malloc(sizeof(struct tm));
     strptime(buffer, "%Y.%m.%d %H:%M:%S", time_server);
@@ -416,7 +419,7 @@ char* get_timestamp_server(SSL* ssl){
     char *timestamp = malloc(sizeof(char) * BUF_SIZE);
     bzero(timestamp, BUF_SIZE);
 
-    time_client->tm_hour += 1; // não sei por que, tá louco
+    //time_client->tm_hour += 1; // não sei por que, tá louco
     time_client->tm_mon += 1;
 
     char seconds[2];
@@ -444,7 +447,7 @@ char* get_timestamp_server(SSL* ssl){
     strcat(timestamp, ":");
     strcat(timestamp, seconds);
 
-    //printf("Timestamp final no cliente: %s\n", timestamp);
+    printf("Timestamp final no cliente: %s\n", timestamp);
 
     return timestamp;
 }
@@ -475,6 +478,7 @@ file_node* fn_create_from_path_server_time(char* path, SSL* ssl) {
 
                /* Pega o horário atualizado de acordo com o horário do server. */
                char *timestamp = get_timestamp_server(ssl);
+               printf("Timestamp para colocar na struct: %s\n", timestamp);
                strcpy(file->last_modified, timestamp);
                file->size = (int)attr.st_size;
                strcpy(file->extension, "unknown"); //TODO arrumer isso para pegar a extensão do arquivo se houver
