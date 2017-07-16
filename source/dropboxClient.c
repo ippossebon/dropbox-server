@@ -445,11 +445,7 @@ char* get_timestamp_client(SSL* ssl){
     return timestamp;
 }
 
-/*
-Requisita o horário do servidor na forma de um timestamp
-Unix.
-Retorna o timestamp do servidor.
-*/
+
 char* get_timestamp_server(SSL* ssl){
 
     int num_bytes_read, num_bytes_sent;
@@ -471,7 +467,6 @@ char* get_timestamp_server(SSL* ssl){
     }
 
     return buffer;
-
 }
 
 void createMethodCTXSync() {
