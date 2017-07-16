@@ -13,7 +13,6 @@
 #include "../include/dropboxServer.h"
 #include "../include/dropboxUtil.h"
 
-/* Temos que conferir se não precisamos definir a porta de maneira mais dinâmica */
 #define PORT 4000
 
 /* Globais */
@@ -191,8 +190,6 @@ void list(SSL *ssl, char *userid){
   }
 
   int n;
-  int size = strlen(buffer);
-
   /* Envia para o client os nomes dos arquivos */
 	n = SSL_write(ssl, buffer, BUF_SIZE);
 	if (n < 0){
@@ -486,6 +483,8 @@ void send_time(SSL *ssl){
     now = time (NULL);
     local_time = localtime (&now);
 
+    local_time->tm_mon += 1; // algum erro de fuso horário
+
     /* Coloca a data no formato: aaaa.mm.dd hh:mm:ss */
     char seconds[3];
     sprintf(seconds, "%d", local_time->tm_sec);
@@ -532,12 +531,12 @@ int main(int argc, char *argv[]){
     printf("[main] Inicializou SSL.\n");
 
     /* SSL Sync */
-    SSL_METHOD *method_sync;
+    const SSL_METHOD *method_sync;
     SSL_CTX *ctx_sync; //ponteiro para a estrutura do contexto do sync
     SSL *ssl_sync;
 
     /* SSL Cmd */
-    SSL_METHOD *method_cmd;
+    const SSL_METHOD *method_cmd;
     SSL_CTX *ctx_cmd; //ponteiro para a estrutura do contexto dos comandos
     SSL *ssl_cmd;
 

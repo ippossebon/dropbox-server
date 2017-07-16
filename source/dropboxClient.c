@@ -7,21 +7,21 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
-#include "../include/dropboxUtil.h"
-#include "../include/dropboxClient.h"
 #include <errno.h>
 #include <libgen.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <dirent.h>
 
+#include "../include/dropboxUtil.h"
+#include "../include/dropboxClient.h"
 
 /* Globais */
 char host[128];
 int port;
 char userid[MAXNAME];
-SSL_METHOD *method_sync; //inicializa um ponteiro para armazenar a estrutura do SSL que descreve as funções internas, necessário para criar o contexto
-SSL_METHOD *method_cmd;
+const SSL_METHOD *method_sync; //inicializa um ponteiro para armazenar a estrutura do SSL que descreve as funções internas, necessário para criar o contexto
+const SSL_METHOD *method_cmd;
 SSL_CTX *ctx_sync; //ponteiro para a estrutura do contexto
 SSL_CTX *ctx_cmd; //ponteiro para a estrutura do contexto
 SSL *ssl_sync; //usado para as funções de descrição e anexação do SSL ao socket
@@ -78,7 +78,6 @@ void close_connection(char* buffer, SSL *ssl){
 
   /* Envia conteúdo do buffer pelo socket */
   int num_bytes_sent;
-  int buffer_size = strlen(buffer);
   bzero(buffer, BUF_SIZE);
   num_bytes_sent = SSL_write(ssl, buffer, BUF_SIZE);
 
@@ -141,7 +140,7 @@ void sync_client(SSL* ssl_cmd){
   SSL_write(ssl_sync, buffer, BUF_SIZE);
 
   /* Aqui estará a nova lista com os arquivos atuais/reais */
-  real_current_files = (file_node*) fn_create_from_path_server_time(sync_dir, ssl_cmd);
+  real_current_files = (file_node*) fn_create_from_path(sync_dir);
   file_node* node;
 
   /* Para cada arquivo "real/nova" bucamos na lista "antiga" se ele existe.
@@ -237,7 +236,7 @@ void sync_server(SSL* ssl_cmd){
 
     // A current está atualizando para que não dar erro.
     fn_clear(current_files);
-    current_files = fn_create_from_path_server_time(sync_dir, ssl_cmd);
+    current_files = fn_create_from_path(sync_dir);
 }
 
 void insertSSLIntoSocketSync(int socket) {
@@ -304,7 +303,6 @@ int auth(SSL *ssl, char* userid){
   printf("Realizando verificação de usuário... \n\n");
 
   int num_bytes_sent, num_bytes_read;
-  int buffer_size = strlen(userid);
   char buffer[BUF_SIZE];
 
   num_bytes_sent = SSL_write(ssl, userid, BUF_SIZE);
@@ -364,48 +362,24 @@ void *sync_thread(void *arguments){
     return 0;
 }
 
-/*
-Requisita o horário do servidor na forma de um timestamp
-Unix.
-O resultado será usado pela aplicação cliente para calcular
-sua nova referência temporal (a ser utilizada nos registros
-de arquivos)
-*/
-char* get_timestamp_server(SSL* ssl){
-
-    int num_bytes_read, num_bytes_sent;
-    char buffer[BUF_SIZE];
-    bzero(buffer, BUF_SIZE);
-    strcat(buffer, "time#");
-
+int sync_clocks(SSL* ssl){
     /* Pega a hora atual para determinar quanto tempo vai demorar a requisição.*/
+    char* timestamp_server;
     time_t now;
     struct tm *before_request_time, *after_request_time;
 
     now = time (NULL);
     before_request_time = localtime (&now);
 
-    /* Envia o comando time# */
-    num_bytes_sent = SSL_write(ssl, buffer, BUF_SIZE);
-    if (num_bytes_sent < 0){
-        printf("[get_timestamp_server] ERROR writing on socket");
-    }
-
-    /* Lê o timestamp do servidor que vem no formato aaaa.mm.dd hh:mm:ss */
-    bzero(buffer, BUF_SIZE);
-    num_bytes_read = SSL_read(ssl, buffer, BUF_SIZE);
-    if (num_bytes_read < 0){
-        printf("[get_timestamp_server] ERROR reading from socket");
-    }
+    timestamp_server = get_time_server(ssl);
 
     now = time (NULL);
     after_request_time = localtime (&now);
 
-    printf("Timestamp que veio do server: %s\n", buffer);
-
+    /* Aplicação do algoritmo de Cristian */
     struct tm *time_server = malloc(sizeof(struct tm));
-    strptime(buffer, "%Y.%m.%d %H:%M:%S", time_server);
-    time_server->tm_mon += 1; // não sei por que
+    strptime(timestamp_server, "%Y.%m.%d %H:%M:%S", time_server);
+    //time_server->tm_mon += 1; // não sei por que
 
     /* Aplica a fórmula T_cliente = T_servidor + (T1 - t0)/2*/
     double delta_time = difftime(mktime(after_request_time), mktime(before_request_time));
@@ -420,18 +394,18 @@ char* get_timestamp_server(SSL* ssl){
     bzero(timestamp, BUF_SIZE);
 
     //time_client->tm_hour += 1; // não sei por que, tá louco
-    time_client->tm_mon += 1;
+    //time_client->tm_mon += 1;
 
     char seconds[3];
-    sprintf(seconds, "%2d", time_client->tm_sec);
+    sprintf(seconds, "%02d", time_client->tm_sec);
     char minutes[3];
-    sprintf(minutes, "%2d", time_client->tm_min);
+    sprintf(minutes, "%02d", time_client->tm_min);
     char hour[3];
-    sprintf(hour, "%2d", time_client->tm_hour);
+    sprintf(hour, "%02d", time_client->tm_hour);
     char day[3];
-    sprintf(day, "%2d", time_client->tm_mday);
+    sprintf(day, "%02d", time_client->tm_mday);
     char month[3];
-    sprintf(month, "%2d", time_client->tm_mon);
+    sprintf(month, "%02d", time_client->tm_mon);
     char year[5];
     sprintf(year, "%d", time_client->tm_year + 1900);
 
@@ -449,12 +423,46 @@ char* get_timestamp_server(SSL* ssl){
 
     printf("Timestamp final no cliente: %s\n", timestamp);
 
-    return timestamp;
+    return 0;
+}
+
+/*
+Requisita o horário do servidor na forma de um timestamp
+Unix.
+O resultado será usado pela aplicação cliente para calcular
+sua nova referência temporal (a ser utilizada nos registros
+de arquivos)
+*/
+char* get_time_server(SSL* ssl){
+
+    int num_bytes_read, num_bytes_sent;
+    char* buffer = malloc(sizeof(char) * BUF_SIZE);
+    bzero(buffer, BUF_SIZE);
+    strcat(buffer, "time#");
+
+    /* Envia o comando time# para o servidor*/
+    num_bytes_sent = SSL_write(ssl, buffer, BUF_SIZE);
+    if (num_bytes_sent < 0){
+        printf("[get_timestamp_server] ERROR writing on socket");
+    }
+
+    /* Lê o timestamp do servidor que vem no formato aaaa.mm.dd hh:mm:ss */
+    bzero(buffer, BUF_SIZE);
+    num_bytes_read = SSL_read(ssl, buffer, BUF_SIZE);
+    if (num_bytes_read < 0){
+        printf("[get_timestamp_server] ERROR reading from socket");
+    }
+
+    printf("Timestamp que veio do server: %s\n", buffer);
+
+    return buffer;
+
 }
 
 /* Cria um file_set a partir dos arquivos de um caminho indicado por path,
 utilizando o timestamp recebido do servidor, sobre o algoritmo de Cristian.
 */
+/*
 file_node* fn_create_from_path_server_time(char* path, SSL* ssl) {
 
    file_node* list = fn_create();
@@ -476,12 +484,12 @@ file_node* fn_create_from_path_server_time(char* path, SSL* ssl) {
                file_info* file = malloc(sizeof(file_info));
                strcpy(file->name, filename);
 
-               /* Pega o horário atualizado de acordo com o horário do server. */
+               // Pega o horário atualizado de acordo com o horário do server.
                char *timestamp = get_timestamp_server(ssl);
                printf("Timestamp para colocar na struct: %s\n", timestamp);
                strcpy(file->last_modified, timestamp);
                file->size = (int)attr.st_size;
-               strcpy(file->extension, "unknown"); //TODO arrumer isso para pegar a extensão do arquivo se houver
+               strcpy(file->extension, "unknown"); //TODO arrumar isso para pegar a extensão do arquivo se houver
                list = fn_add(list,file);
             }
          }
@@ -490,6 +498,7 @@ file_node* fn_create_from_path_server_time(char* path, SSL* ssl) {
    }
    return list;
 }
+*/
 
 void createMethodCTXSync() {
   method_sync = SSLv23_client_method();
@@ -583,9 +592,13 @@ int main(int argc, char *argv[]){
     strcat(sync_dir, userid);
     printf("Seu diretório sincronizado é [%s]\n",sync_dir);
 
+    printf("[main] Possivel segmentation fault: antes de create frm path\n");
+
     //Monta a lista inicial de arquivos do diretório
-    current_files = (file_node*) fn_create_from_path_server_time(sync_dir, ssl_cmd);
+    current_files = fn_create_from_path(sync_dir);
     fn_print(current_files);
+
+    printf("[main] Possivel segmentation fault: depois de create from path\n");
 
     char buffer[BUF_SIZE];
     printf("\n**************************************\n");
@@ -635,7 +648,7 @@ int main(int argc, char *argv[]){
         list(buffer, ssl_cmd);
       }
       else if (strcmp("time", command) == 0){
-          get_timestamp_server(ssl_cmd);
+          get_time_server(ssl_cmd);
       }
       else if( strcmp("exit", command) == 0){
         close_connection(buffer, ssl_cmd);
