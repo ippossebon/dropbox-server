@@ -35,6 +35,10 @@ file_node* real_current_files;
 char sync_dir[255]; //Variável com o nome da pasta sync do usuário
 int sync_socket;
 
+/* Guarda a diferença entre o horário do servidor e o horário do cliente.
+Atualiza essa diferença de tempos em tempos. */
+time_t difference_server;
+
 /*
   Conecta o cliente com o servidor.
   host – endereço do servidor
@@ -362,7 +366,15 @@ void *sync_thread(void *arguments){
     return 0;
 }
 
-int sync_clocks(SSL* ssl){
+/* Calculado de acordo com o algoritmo de Cristian. */
+void set_difference_from_server(struct tm* after_request_time, struct tm* before_request_time){
+    difference_server = difftime(mktime(after_request_time), mktime(before_request_time));
+    difference_server = difference_server / 2;
+}
+
+/* Calcula e seta a diferença de tempo entre o cliente e o servidor, seta a
+variável global difference_server */
+void calculate_difference_from_server(SSL* ssl){
     /* Pega a hora atual para determinar quanto tempo vai demorar a requisição.*/
     char* timestamp_server;
     time_t now;
@@ -371,30 +383,33 @@ int sync_clocks(SSL* ssl){
     now = time (NULL);
     before_request_time = localtime (&now);
 
-    timestamp_server = get_time_server(ssl);
+    timestamp_server = get_timestamp_server(ssl);
 
     now = time (NULL);
     after_request_time = localtime (&now);
 
-    /* Aplicação do algoritmo de Cristian */
     struct tm *time_server = malloc(sizeof(struct tm));
     strptime(timestamp_server, "%Y.%m.%d %H:%M:%S", time_server);
-    //time_server->tm_mon += 1; // não sei por que
 
     /* Aplica a fórmula T_cliente = T_servidor + (T1 - t0)/2*/
-    double delta_time = difftime(mktime(after_request_time), mktime(before_request_time));
-    delta_time = delta_time / 2;
+    set_difference_from_server(after_request_time, before_request_time);
+}
 
-    time_t new_time = delta_time + mktime(time_server);
+
+char* get_timestamp_client(SSL* ssl){
+    calculate_difference_from_server(ssl);
+
+    char* timestamp_server = get_timestamp_server(ssl);
+    struct tm *time_server = malloc(sizeof(struct tm));
+    strptime(timestamp_server, "%Y.%m.%d %H:%M:%S", time_server);
+
+    time_t new_time = difference_server + mktime(time_server);
     struct tm *time_client = malloc(sizeof(struct tm));
     time_client = localtime(&new_time);
 
     /* Coloca a data no formato: aaaa.mm.dd hh:mm:ss */
     char *timestamp = malloc(sizeof(char) * BUF_SIZE);
     bzero(timestamp, BUF_SIZE);
-
-    //time_client->tm_hour += 1; // não sei por que, tá louco
-    //time_client->tm_mon += 1;
 
     char seconds[3];
     sprintf(seconds, "%02d", time_client->tm_sec);
@@ -423,17 +438,15 @@ int sync_clocks(SSL* ssl){
 
     printf("Timestamp final no cliente: %s\n", timestamp);
 
-    return 0;
+    return timestamp;
 }
 
 /*
 Requisita o horário do servidor na forma de um timestamp
 Unix.
-O resultado será usado pela aplicação cliente para calcular
-sua nova referência temporal (a ser utilizada nos registros
-de arquivos)
+Retorna o timestamp do servidor.
 */
-char* get_time_server(SSL* ssl){
+char* get_timestamp_server(SSL* ssl){
 
     int num_bytes_read, num_bytes_sent;
     char* buffer = malloc(sizeof(char) * BUF_SIZE);
@@ -648,7 +661,7 @@ int main(int argc, char *argv[]){
         list(buffer, ssl_cmd);
       }
       else if (strcmp("time", command) == 0){
-          get_time_server(ssl_cmd);
+          get_timestamp_server(ssl_cmd);
       }
       else if( strcmp("exit", command) == 0){
         close_connection(buffer, ssl_cmd);
