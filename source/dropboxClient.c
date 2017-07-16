@@ -466,52 +466,9 @@ char* get_timestamp_server(SSL* ssl){
         printf("[get_timestamp_server] ERROR reading from socket");
     }
 
-    printf("Timestamp que veio do server: %s\n", buffer);
-
     return buffer;
 
 }
-
-/* Cria um file_set a partir dos arquivos de um caminho indicado por path,
-utilizando o timestamp recebido do servidor, sobre o algoritmo de Cristian.
-*/
-/*
-file_node* fn_create_from_path_server_time(char* path, SSL* ssl) {
-
-   file_node* list = fn_create();
-
-   DIR* d = opendir(path);
-   if (d) {
-      struct dirent *dir;
-      while ((dir = readdir(d)) != NULL) {
-         if (dir->d_type == DT_REG) { //verifica se é um arquivo
-            char* filename = dir->d_name;
-            struct stat attr; //Essa estrutura armazena os atributos do arquivo
-            char fullpath[BUF_SIZE];
-            sprintf(fullpath, "%s/%s",path,filename);
-            if (stat(fullpath,&attr)) {
-               perror(fullpath);
-               exit(-1);
-            } else {
-               //Adiciona um file_info a lista
-               file_info* file = malloc(sizeof(file_info));
-               strcpy(file->name, filename);
-
-               // Pega o horário atualizado de acordo com o horário do server.
-               char *timestamp = get_timestamp_server(ssl);
-               printf("Timestamp para colocar na struct: %s\n", timestamp);
-               strcpy(file->last_modified, timestamp);
-               file->size = (int)attr.st_size;
-               strcpy(file->extension, "unknown"); //TODO arrumar isso para pegar a extensão do arquivo se houver
-               list = fn_add(list,file);
-            }
-         }
-      }
-      closedir(d);
-   }
-   return list;
-}
-*/
 
 void createMethodCTXSync() {
   method_sync = SSLv23_client_method();
@@ -661,7 +618,10 @@ int main(int argc, char *argv[]){
       }
       else if (strcmp("time", command) == 0){
           calculate_difference_from_server(ssl_cmd);
-          get_timestamp_server(ssl_cmd);
+
+          char* timestamp_server = get_timestamp_server(ssl_cmd);
+          printf("Timestamp que veio do server: %s\n", timestamp_server);
+
       }
       else if( strcmp("exit", command) == 0){
         close_connection(buffer, ssl_cmd);

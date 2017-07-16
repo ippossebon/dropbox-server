@@ -528,7 +528,6 @@ int main(int argc, char *argv[]){
 
     /* Inicializando o SSL */
     initializeSSL();
-    printf("[main] Inicializou SSL.\n");
 
     /* SSL Sync */
     const SSL_METHOD *method_sync;
@@ -614,13 +613,11 @@ int main(int argc, char *argv[]){
 
     /* Zero clientes conectados */
     num_clients = 0;
-    printf("[main] Before while\n");
 	/* Laço que fica aguardando conexões de clientes e criandos as threads*/
 	while(1){
 
 	    /* Aguarda a conexão do cliente no socket principal */
 		if((new_socket_id = accept(server_socket_id, (struct sockaddr *) &client_address, &client_len)) != ERRO){
-            printf("[main] entrou no accept\n");
             /*
                 SSL Handshake
                 Socket de comando
