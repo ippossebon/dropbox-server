@@ -96,7 +96,10 @@ file_node* fn_create_from_path(char* path, time_t difference_server) { //Cria um
                strcpy(file->name, filename);
                //TODO Tem que considerar milisegundos aqui?
                //Pega a última modificação do arquivo e salva. Ex.: "2017.03.12 08:10:59"
-               strftime(file->last_modified, 36, "%Y.%m.%d %H:%M:%S", localtime(&attr.st_mtime) + difference_server);
+               //strftime(file->last_modified, 36, "%Y.%m.%d %H:%M:%S", localtime(&attr.st_mtime) + difference_server);
+               time_t date_seconds = mktime(localtime(&attr.st_mtime)) + difference_server;
+               struct tm* last_modified_date = localtime(&date_seconds);
+               strftime (file->last_modified, 36, "%Y.%m.%d %H:%M:%S", last_modified_date);
                file->size = (int)attr.st_size;
                strcpy(file->extension, "unknown"); //TODO arrumer isso para pegar a extensão do arquivo se houver
                list = fn_add(list,file);

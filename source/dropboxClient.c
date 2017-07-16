@@ -383,7 +383,7 @@ void calculate_difference_from_server(SSL* ssl){
     after_request_time = localtime (&now);
 
     struct tm *time_server = malloc(sizeof(struct tm));
-    strptime(timestamp_server, "%Y.%m.%d %H:%M:%S", time_server);
+    strftime(timestamp_server, BUF_SIZE, "%Y.%m.%d %H:%M:%S", time_server);
 
     /* Considerando before_request_time como o horário do cliente no momento da
     requisição, calculamos a diferença entre o horário que o servidor respondeu
@@ -405,7 +405,7 @@ void calculate_difference_from_server(SSL* ssl){
 char* get_timestamp_client(SSL* ssl){
     char* timestamp_server = get_timestamp_server(ssl);
     struct tm *time_server = malloc(sizeof(struct tm));
-    strptime(timestamp_server, "%Y.%m.%d %H:%M:%S", time_server);
+    strftime(timestamp_server, BUF_SIZE, "%Y.%m.%d %H:%M:%S", time_server);
 
     time_t new_time = difference_server + mktime(time_server);
     struct tm *time_client = malloc(sizeof(struct tm));
