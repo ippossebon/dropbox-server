@@ -144,20 +144,20 @@ void sync_client(SSL* ssl_cmd){
   SSL_write(ssl_sync, buffer, BUF_SIZE);
 
   /* Aqui estará a nova lista com os arquivos atuais/reais */
-  real_current_files = (file_node*) fn_create_from_path(sync_dir);
+  real_current_files = (file_node*) fn_create_from_path(sync_dir, difference_server);
   file_node* node;
 
   /* Para cada arquivo "real/nova" bucamos na lista "antiga" se ele existe.
     Se encontrar: verifica se foi modificado. Se tiver sido modificado então = UPLOAD do arquivo.
     Se não encontrar: significa que esse arquivo foi adicionado = UPLOAD arquivo */
-  for (node = real_current_files; node !=NULL; node = node->next) {
+  for (node = real_current_files; node != NULL; node = node->next) {
     /* Retorna o file_info do nodo se encontrado, se não retorna NULL */
     file_info* old_file = fn_find(current_files, node->data->name);
     int send = 1;
 
     if(old_file != NULL){ //encontrou o arquivo, verifica se foi modificado
        if(strcmp(old_file->last_modified, node->data->last_modified) == 0){
-           send =0;
+           send = 0;
        }
     }
 
@@ -240,7 +240,7 @@ void sync_server(SSL* ssl_cmd){
 
     // A current está atualizando para que não dar erro.
     fn_clear(current_files);
-    current_files = fn_create_from_path(sync_dir);
+    current_files = fn_create_from_path(sync_dir, difference_server);
 }
 
 void insertSSLIntoSocketSync(int socket) {
@@ -596,6 +596,9 @@ int main(int argc, char *argv[]){
       exit(1);
     }
 
+    /* Inicializa a diferença de relógios entre o cliente e o servidor. */
+    calculate_difference_from_server(ssl_cmd);
+
     char command[10];
     char fileName[100];
     char line[110];
@@ -605,13 +608,9 @@ int main(int argc, char *argv[]){
     strcat(sync_dir, userid);
     printf("Seu diretório sincronizado é [%s]\n",sync_dir);
 
-    printf("[main] Possivel segmentation fault: antes de create frm path\n");
-
     //Monta a lista inicial de arquivos do diretório
-    current_files = fn_create_from_path(sync_dir);
+    current_files = fn_create_from_path(sync_dir, difference_server);
     fn_print(current_files);
-
-    printf("[main] Possivel segmentation fault: depois de create from path\n");
 
     char buffer[BUF_SIZE];
     printf("\n**************************************\n");
@@ -661,6 +660,7 @@ int main(int argc, char *argv[]){
         list(buffer, ssl_cmd);
       }
       else if (strcmp("time", command) == 0){
+          calculate_difference_from_server(ssl_cmd);
           get_timestamp_server(ssl_cmd);
       }
       else if( strcmp("exit", command) == 0){

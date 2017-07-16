@@ -74,7 +74,7 @@ int existsFolder(char* path){
     }
 }
 
-file_node* fn_create_from_path(char* path) { //Cria um file_set a partir dos arquivos de um caminho indicado por path
+file_node* fn_create_from_path(char* path, time_t difference_server) { //Cria um file_set a partir dos arquivos de um caminho indicado por path
 
    file_node* list = fn_create();
 
@@ -96,7 +96,7 @@ file_node* fn_create_from_path(char* path) { //Cria um file_set a partir dos arq
                strcpy(file->name, filename);
                //TODO Tem que considerar milisegundos aqui?
                //Pega a última modificação do arquivo e salva. Ex.: "2017.03.12 08:10:59"
-               strftime(file->last_modified, 36, "%Y.%m.%d %H:%M:%S", localtime(&attr.st_mtime));
+               strftime(file->last_modified, 36, "%Y.%m.%d %H:%M:%S", localtime(&attr.st_mtime) + difference_server);
                file->size = (int)attr.st_size;
                strcpy(file->extension, "unknown"); //TODO arrumer isso para pegar a extensão do arquivo se houver
                list = fn_add(list,file);

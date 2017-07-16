@@ -60,7 +60,7 @@ void sync_server(SSL *ssl, char* userid){
     no servidor, no momento atual. Estes arquivos serão comparados com os outros,
     para verificar possíveis modificações. */
     pthread_mutex_lock(&mutex_client_files);
-    file_node* real_current_files = fn_create_from_path(full_path);
+    file_node* real_current_files = fn_create_from_path(full_path, 0);
     pthread_mutex_unlock(&mutex_client_files);
 
     SSL_read(ssl, buffer, BUF_SIZE);
@@ -279,7 +279,7 @@ int auth(SSL *ssl, char* userid){
         /* fn_create_from_path() inicializa uma lista com os arquivos contidos
         na pasta deste cliente no servidor. */
         pthread_mutex_lock(&mutex_client_files);
-        new_client->files = fn_create_from_path(dir_client);
+        new_client->files = fn_create_from_path(dir_client, 0);
         pthread_mutex_unlock(&mutex_client_files);
 
         new_client->logged_in = 1;
