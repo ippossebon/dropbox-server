@@ -16,7 +16,6 @@ int get_sync_dir();
 void *sync_thread(void*);
 file_node* fn_create_from_path_server_time(char* path, SSL *ssl);
 
-void set_difference_from_server(struct tm* after_request_time, struct tm* before_request_time);
 void calculate_difference_from_server(SSL* ssl);
 char* get_timestamp_client(SSL* ssl);
 char* get_timestamp_server(SSL* ssl);

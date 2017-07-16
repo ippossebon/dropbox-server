@@ -366,12 +366,6 @@ void *sync_thread(void *arguments){
     return 0;
 }
 
-/* Calculado de acordo com o algoritmo de Cristian. */
-void set_difference_from_server(struct tm* after_request_time, struct tm* before_request_time){
-    difference_server = difftime(mktime(after_request_time), mktime(before_request_time));
-    difference_server = difference_server / 2;
-}
-
 /* Calcula e seta a diferença de tempo entre o cliente e o servidor, seta a
 variável global difference_server */
 void calculate_difference_from_server(SSL* ssl){
@@ -391,14 +385,24 @@ void calculate_difference_from_server(SSL* ssl){
     struct tm *time_server = malloc(sizeof(struct tm));
     strptime(timestamp_server, "%Y.%m.%d %H:%M:%S", time_server);
 
-    /* Aplica a fórmula T_cliente = T_servidor + (T1 - t0)/2*/
-    set_difference_from_server(after_request_time, before_request_time);
+    /* Considerando before_request_time como o horário do cliente no momento da
+    requisição, calculamos a diferença entre o horário que o servidor respondeu
+    e o horário local do cliente.
+     Aplica a fórmula T_new_cliente = T_servidor + (T1 - T_cliente)/2 para obter o horário
+     real no cliente. A diferença é calculada como T_cliente_real - T_servidor*/
+     time_t delay;
+     delay = difftime(mktime(after_request_time), mktime(before_request_time));
+     delay = delay / 2;
+
+     time_t new_client_time_segs = mktime(before_request_time) + delay;
+     struct tm *new_client_time;
+     new_client_time = localtime(&new_client_time_segs);
+
+     difference_server = difftime(mktime(new_client_time), mktime(time_server));
 }
 
 
 char* get_timestamp_client(SSL* ssl){
-    calculate_difference_from_server(ssl);
-
     char* timestamp_server = get_timestamp_server(ssl);
     struct tm *time_server = malloc(sizeof(struct tm));
     strptime(timestamp_server, "%Y.%m.%d %H:%M:%S", time_server);
