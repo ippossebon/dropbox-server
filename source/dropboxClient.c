@@ -79,7 +79,7 @@ void close_connection(char* buffer, SSL *ssl){
   /* Envia conteúdo do buffer pelo socket */
   int num_bytes_sent;
   int buffer_size = strlen(buffer);
-  num_bytes_sent = SSL_write(ssl, buffer, buffer_size);
+  num_bytes_sent = SSL_write(ssl, buffer, BUF_SIZE);
 
   if (num_bytes_sent < 0){
     printf("ERROR writing to socket\n");
@@ -269,16 +269,16 @@ void insertSSLIntoSocketCmd(int socket) {
 
 void list(char* line, SSL *ssl){
   int num_bytes_read, num_bytes_sent;
-  char buffer[256];
-  bzero(buffer, 256);
+  char buffer[BUF_SIZE];
+  bzero(buffer, BUF_SIZE);
 
-  num_bytes_sent = SSL_write(ssl, line, strlen(line)); //enviar o #list#
+  num_bytes_sent = SSL_write(ssl, line, BUF_SIZE); //enviar o #list#
   if (num_bytes_sent < 0){
     printf("[list] ERROR writing from socket");
   }
 
   /* Lê o nome dos arquivos que vem no buffer no formato: file1#file2#file# */
-  num_bytes_read = SSL_read(ssl, buffer, 256);
+  num_bytes_read = SSL_read(ssl, buffer, BUF_SIZE);
 
   if (num_bytes_read < 0){
     printf("[list] ERROR reading from socket");
@@ -303,17 +303,17 @@ int auth(SSL *ssl, char* userid){
 
   int num_bytes_sent, num_bytes_read;
   int buffer_size = strlen(userid);
-  char buffer[256];
+  char buffer[BUF_SIZE];
 
-  num_bytes_sent = SSL_write(ssl, userid, buffer_size);
+  num_bytes_sent = SSL_write(ssl, userid, BUF_SIZE);
 
   if (num_bytes_sent < 0){
     printf("[auth] ERROR writing on socket\n");
     exit(1);
   }
 
-  bzero(buffer, 256);
-  num_bytes_read = SSL_read(ssl, buffer, 256);
+  bzero(buffer, BUF_SIZE);
+  num_bytes_read = SSL_read(ssl, buffer, BUF_SIZE);
 
   if (num_bytes_read < 0){
     printf("[auth] ERROR reading on socket\n");
@@ -372,8 +372,8 @@ de arquivos)
 char* get_timestamp_server(SSL* ssl){
 
     int num_bytes_read, num_bytes_sent;
-    char buffer[256];
-    bzero(buffer, 256);
+    char buffer[BUF_SIZE];
+    bzero(buffer, BUF_SIZE);
     strcat(buffer, "time#");
 
     /* Pega a hora atual para determinar quanto tempo vai demorar a requisição.*/
@@ -384,13 +384,13 @@ char* get_timestamp_server(SSL* ssl){
     before_request_time = localtime (&now);
 
     /* Envia o comando time# */
-    num_bytes_sent = SSL_write(ssl, buffer, strlen(buffer));
+    num_bytes_sent = SSL_write(ssl, buffer, BUF_SIZE);
     if (num_bytes_sent < 0){
         printf("[get_timestamp_server] ERROR writing on socket");
     }
 
     /* Lê o timestamp do servidor que vem no formato aaaa.mm.dd hh:mm:ss */
-    num_bytes_read = SSL_read(ssl, buffer, 256);
+    num_bytes_read = SSL_read(ssl, buffer, BUF_SIZE);
     if (num_bytes_read < 0){
         printf("[get_timestamp_server] ERROR reading from socket");
     }
@@ -413,8 +413,8 @@ char* get_timestamp_server(SSL* ssl){
     time_client = localtime(&new_time);
 
     /* Coloca a data no formato: aaaa.mm.dd hh:mm:ss */
-    char *timestamp = malloc(sizeof(char) * 256);
-    bzero(timestamp, 256);
+    char *timestamp = malloc(sizeof(char) * BUF_SIZE);
+    bzero(timestamp, BUF_SIZE);
 
     time_client->tm_hour += 1; // não sei por que, tá louco
     time_client->tm_mon += 1;
@@ -463,7 +463,7 @@ file_node* fn_create_from_path_server_time(char* path, SSL* ssl) {
          if (dir->d_type == DT_REG) { //verifica se é um arquivo
             char* filename = dir->d_name;
             struct stat attr; //Essa estrutura armazena os atributos do arquivo
-            char fullpath[256];
+            char fullpath[BUF_SIZE];
             sprintf(fullpath, "%s/%s",path,filename);
             if (stat(fullpath,&attr)) {
                perror(fullpath);
@@ -578,22 +578,24 @@ int main(int argc, char *argv[]){
     strcpy(sync_dir, "sync_dir_");
     strcat(sync_dir, userid);
     printf("Seu diretório sincronizado é [%s]\n",sync_dir);
+
     //Monta a lista inicial de arquivos do diretório
     current_files = (file_node*) fn_create_from_path_server_time(sync_dir, ssl_cmd);
     fn_print(current_files);
-    char buffer[256];
+
+    char buffer[BUF_SIZE];
     printf("\n**************************************\n");
     printf("    Digite seu comando no formato: \n\tupload <filename.ext> \n\tdownload <filename.ext> \n\tlist \n\texit\n");
     printf("**************************************\n");
     while(1){
 
       bzero(line, 110);
-      bzero(buffer, 256);
+      bzero(buffer, BUF_SIZE);
       bzero(command, 10);
       bzero(fileName,100);
 
       printf("\n\e[33m%s@dropbox> \e[39m", userid);
-      fgets(line, 256,stdin);
+      fgets(line, BUF_SIZE,stdin);
       line[strlen(line) - 1] = '\0';
 
       int i=0;
@@ -620,7 +622,7 @@ int main(int argc, char *argv[]){
         send_file(fileName, buffer, ssl_cmd);
       }
       else if( strcmp("download", command) == 0){
-        if (SSL_write(ssl_cmd, buffer, strlen(buffer)) < 0){
+        if (SSL_write(ssl_cmd, buffer, BUF_SIZE) < 0){
             printf("ERROR writing from socket");
         }
         get_file(fileName, ssl_cmd);

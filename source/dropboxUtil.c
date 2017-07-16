@@ -85,7 +85,7 @@ file_node* fn_create_from_path(char* path) { //Cria um file_set a partir dos arq
          if (dir->d_type == DT_REG) { //verifica se é um arquivo
             char* filename = dir->d_name;
             struct stat attr; //Essa estrutura armazena os atributos do arquivo
-            char fullpath[256];
+            char fullpath[BUF_SIZE];
             sprintf(fullpath, "%s/%s",path,filename);
             if (stat(fullpath,&attr)) {
                perror(fullpath);

@@ -162,9 +162,9 @@ void send_file(char *file_name, SSL *ssl, char *userid){
 /* Lista todos os arquivos contidos no diretório remoto do cliente. */
 void list(SSL *ssl, char *userid){
     char* full_path = getClientFolderName(userid);
-    char buffer[256];
+    char buffer[BUF_SIZE];
     int numb_files = 0; /* Gambiarra para verificar se o diretório é vazio*/
-    bzero(buffer, 256);
+    bzero(buffer, BUF_SIZE);
 
   DIR *d;
   struct dirent *dir;
@@ -194,14 +194,14 @@ void list(SSL *ssl, char *userid){
   int size = strlen(buffer);
 
   /* Envia para o client os nomes dos arquivos */
-	n = SSL_write(ssl, buffer, size);
+	n = SSL_write(ssl, buffer, BUF_SIZE);
 	if (n < 0){
 		printf("[list] Erro ao escrever no socket\n");
 	}
 }
 
 void deleteLocalFile(char* file_name, char* userid){
-  char file_path[256];
+  char file_path[BUF_SIZE];
   strcpy(file_path, "./client_folders/");
   strcat(file_path, userid);
   strcat(file_path, "/");
@@ -215,8 +215,8 @@ void deleteLocalFile(char* file_name, char* userid){
 }
 
 int auth(SSL *ssl, char* userid){
-  char buffer[256];
-  bzero(buffer, 256);
+  char buffer[BUF_SIZE];
+  bzero(buffer, BUF_SIZE);
 
   int num_bytes_read, num_bytes_sent;
 
@@ -224,7 +224,7 @@ int auth(SSL *ssl, char* userid){
   pthread_mutex_lock(&lock_num_clients);
       if(num_clients >= MAXCLIENTS){
           printf("[auth] Número de clientes conectados excedido\n");
-          num_bytes_sent = SSL_write(ssl, "NOT OK", 7);
+          num_bytes_sent = SSL_write(ssl, "NOT OK", BUF_SIZE);
           printf("[auth] Número de clientes conectados: %d\n", num_clients);
           pthread_mutex_unlock(&lock_num_clients);
           return ERRO;
@@ -237,7 +237,7 @@ int auth(SSL *ssl, char* userid){
 
   /* No buffer vem o userid do cliente que esta tentando conectar.
   Lê do socket: userid */
-  num_bytes_read = SSL_read(ssl, buffer, 256);
+  num_bytes_read = SSL_read(ssl, buffer, BUF_SIZE);
   if (num_bytes_read < 0){
     printf("[auth] ERROR reading from socket \n");
     return ERRO;
@@ -300,7 +300,7 @@ int auth(SSL *ssl, char* userid){
 		dispositivos nos quais está logado. */
 		if (user->devices[0] == 1 && user->devices[1] == 1){
 			printf("ERRO: Este cliente já está logado em dois dispositivos diferentes.\n");
-            num_bytes_sent = SSL_write(ssl, "NOT OK", 7);
+            num_bytes_sent = SSL_write(ssl, "NOT OK", BUF_SIZE);
 			return ERRO;
 		}
         else if (user->devices[0] == 0){
@@ -314,7 +314,7 @@ int auth(SSL *ssl, char* userid){
         pthread_mutex_unlock(&mutex_devices);
 	}
 
-    num_bytes_sent = SSL_write(ssl, "OK", 3);
+    num_bytes_sent = SSL_write(ssl, "OK", BUF_SIZE);
 
 	if (num_bytes_sent < 0){
 		printf("[auth] ERROR writing on socket\n");
@@ -479,8 +479,8 @@ void *client_thread(void *new_sockets){
 void send_time(SSL *ssl){
     time_t now;
     struct tm *local_time;
-    char timestamp[256];
-    bzero(timestamp, 256);
+    char timestamp[BUF_SIZE];
+    bzero(timestamp, BUF_SIZE);
 
     now = time (NULL);
     local_time = localtime (&now);
@@ -513,7 +513,7 @@ void send_time(SSL *ssl){
     printf("timestamp %s\n", timestamp);
 
     int n;
-    n = SSL_write(ssl, timestamp, 256);
+    n = SSL_write(ssl, timestamp, BUF_SIZE);
     printf("Vai escrever o seguinte timestamp no socket: %s\n", timestamp);
     if (n < 0){
         printf("[sendTime] Erro ao escrever timestamp no socket\n");

@@ -2,7 +2,7 @@
 #define	__DROPBOXCLIENT__
 
 #define MAXNAME 32
-#define MAXFILES 256
+#define MAXFILES BUF_SIZE
 #define ERRO -1
 
 int connect_server(char *host, int port);
