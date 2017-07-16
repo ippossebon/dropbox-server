@@ -1,3 +1,6 @@
+#define __USE_XOPEN
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -379,11 +382,16 @@ void calculate_difference_from_server(SSL* ssl){
 
     timestamp_server = get_timestamp_server(ssl);
 
+    //printf("timestamp_server %s\n", timestamp_server);
+
     now = time (NULL);
     after_request_time = localtime (&now);
 
     struct tm *time_server = malloc(sizeof(struct tm));
-    strftime(timestamp_server, BUF_SIZE, "%Y.%m.%d %H:%M:%S", time_server);
+    //strftime(timestamp_server, BUF_SIZE, "%Y.%m.%d %H:%M:%S", time_server);
+    strptime(timestamp_server, "%Y.%m.%d %H:%M:%S", time_server);
+    //printf("timestamp_server %s\n", timestamp_server);
+
 
     /* Considerando before_request_time como o horário do cliente no momento da
     requisição, calculamos a diferença entre o horário que o servidor respondeu
@@ -392,13 +400,20 @@ void calculate_difference_from_server(SSL* ssl){
      real no cliente. A diferença é calculada como T_cliente_real - T_servidor*/
      time_t delay;
      delay = difftime(mktime(after_request_time), mktime(before_request_time));
+     //printf("delay antes de dividir por 2: %ld\n", delay);
      delay = delay / 2;
+     //printf("delay depois de dividir por 2: %ld\n", delay);
 
-     time_t new_client_time_segs = mktime(before_request_time) + delay;
+     //printf("time_server %ld\n", mktime(time_server));
+     time_t new_client_time_segs = mktime(time_server) + delay;
+     //printf("new_client_time_segs: %ld\n", new_client_time_segs);
+
      struct tm *new_client_time;
      new_client_time = localtime(&new_client_time_segs);
 
      difference_server = difftime(mktime(new_client_time), mktime(time_server));
+     //get_timestamp_client(ssl);
+     //exit(1);
 }
 
 
@@ -489,6 +504,7 @@ void createMethodCTXCmd() {
 
 int main(int argc, char *argv[]){
   int socket_id;
+  difference_server = 0;
 
   /* Configurando SSL */
   initializeSSL();
